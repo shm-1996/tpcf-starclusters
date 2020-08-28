@@ -116,8 +116,8 @@ def masked_radial_random_sample(galaxy,len_random=100) :
     dec_centre = galaxy.centre[1]
 
     #RA/DEC
-    RA = galaxy.ra
-    DEC = galaxy.dec
+    RA = galaxy.ra_raw
+    DEC = galaxy.dec_raw
     
     #xyz coordinates 
     xyz_data = np.array(ra_dec_to_xyz(RA,DEC))
@@ -136,7 +136,7 @@ def masked_radial_random_sample(galaxy,len_random=100) :
     hist,bins = np.histogram(distance_data,bins=bins_radial)
     distance_hist = (hist/(np.size(distance_data)),bins)
     #Random RA/DEC
-    ra_rand, dec_rand = uniform_sphere(galaxy,len_random)
+    ra_rand, dec_rand = uniform_sphere(galaxy,len_random,ignore_deproject=True)
 
     #Compute probabilities of existing
     rand_prob = random_distribution_probability(ra_rand,dec_rand,distance_hist,
@@ -153,7 +153,15 @@ def masked_radial_random_sample(galaxy,len_random=100) :
     ra_accepted = ra_rand[accepted_indices]
     dec_accepted = dec_rand[accepted_indices]
 
-    return ra_accepted,dec_accepted
+    # Deproject random sample
+    if(galaxy.deproject_galaxy == True):
+        ra_random = ra_accepted*np.cos(galaxy.pa) + dec_accepted*np.sin(galaxy.pa)
+        dec_random = -ra_accepted*np.sin(galaxy.pa) + dec_accepted*np.cos(galaxy.pa)
+        dec_random = dec_random/(np.cos(galaxy.inclination))
+    else : 
+        ra_random, dec_random = ra_accepted, dec_accepted
+
+    return ra_random,dec_random
 
 def masked_random_sample(galaxy,len_random=100):
     """
@@ -177,8 +185,8 @@ def masked_random_sample(galaxy,len_random=100):
     # DS9 Region file to select footprint region
     region = read_ds9(galaxy.region_file)
     fits_file = galaxy.fits_file
-    RA = galaxy.ra 
-    DEC = galaxy.dec
+    RA = galaxy.ra_raw
+    DEC = galaxy.dec_raw
 
     # For converting pixel region to sky region read the fits file
     hdu = fits.open(fits_file)[0]
@@ -206,9 +214,18 @@ def masked_random_sample(galaxy,len_random=100):
     ra_dec_masked = wcs.wcs_pix2world(random_xy_masked,0)
     ra_masked,dec_masked = ra_dec_masked[:,0], ra_dec_masked[:,1]
 
-    return ra_masked, dec_masked
+    # Deproject random sample
+    if(galaxy.deproject_galaxy == True):
+        ra_random = ra_masked*np.cos(galaxy.pa) + dec_masked*np.sin(galaxy.pa)
+        dec_random = -ra_masked*np.sin(galaxy.pa) + dec_masked*np.cos(galaxy.pa)
+        dec_random = dec_random/(np.cos(galaxy.inclination))
+    else : 
+        ra_random, dec_random = ra_masked, dec_masked
 
-def uniform_sphere(galaxy, len_random=100):
+
+    return ra_random, dec_random
+
+def uniform_sphere(galaxy, len_random=100,ignore_deproject=False):
     """Draw a uniform sample on a sphere
 
     Parameters
@@ -218,6 +235,10 @@ def uniform_sphere(galaxy, len_random=100):
     len_random : integer
         Number of attempts of points in the random array. 
         Keep at least > 100*len(data)
+    ignore_deproject : bool
+        Flag to ignore the deprojection of the random sample to account
+        for inclination. This is used by the masked_radial sample to just obtain 
+        a rectangular region in RA-DEC space. 
 
     Returns
     -------
@@ -227,8 +248,8 @@ def uniform_sphere(galaxy, len_random=100):
     """
 
     # RA/DEC Limits
-    RAlim = min(galaxy.ra),max(galaxy.ra)
-    DEClim = min(galaxy.dec),max(galaxy.dec)
+    RAlim = min(galaxy.ra_raw),max(galaxy.ra_raw)
+    DEClim = min(galaxy.dec_raw),max(galaxy.dec_raw)
 
     zlim = np.sin(np.pi * np.asarray(DEClim) / 180.)
 
@@ -236,7 +257,15 @@ def uniform_sphere(galaxy, len_random=100):
     DEC = (180. / np.pi) * np.arcsin(z)
     RA = RAlim[0] + (RAlim[1] - RAlim[0]) * np.random.random(len_random)
 
-    return RA, DEC
+    if(galaxy.deproject_galaxy == True and ignore_deproject == False):
+        ra_random = RA*np.cos(galaxy.pa) + DEC*np.sin(galaxy.pa)
+        dec_random = -RA*np.sin(galaxy.pa) + DEC*np.cos(galaxy.pa)
+        dec_random = dec_random/(np.cos(galaxy.inclination))
+    else : 
+        ra_random, dec_random = RA, DEC
+
+
+    return ra_random,dec_random
 
 
 def ra_dec_to_xyz(ra, dec):
@@ -594,3 +623,11 @@ def bootstrap_two_point_angular(galaxy, method='standard',
     corr_err = np.std(bootstraps, 0, ddof=1)
 
     return corr, corr_err, bootstraps
+
+
+def linear_function(theta,A_1,A_2,alpha_1,alpha_2,beta) :
+    
+    function = np.piecewise(theta,[np.log(theta)<beta],[lambda theta :  A_1 + alpha_1 * np.log(theta), 
+        lambda theta : A_2 + (alpha_1-alpha_2)*beta + alpha_2*np.log(theta)])
+    return function
+        
