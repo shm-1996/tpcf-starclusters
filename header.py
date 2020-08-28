@@ -27,8 +27,43 @@ import scipy
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 mpl.style.use('classic')
-mpl.rc_file('/Users/shm/.matplotlib/matplotlibrc',use_default_template=False)
+mpl.rc_file('/Users/shm/.matplotlib/matplotlibrc',
+    use_default_template=False)
 
 
 ##### Some global quantities #########
 arcsec_to_degree = 1./3600.
+
+# Pickle Data Handling
+
+
+
+def saveObj(obj, name):
+    """
+    Save a pickle object.
+
+    INPUTS:
+    ----------
+    obj      - the name of the data object to be saved
+    name     - the name of the pickle object
+
+    """
+
+    os.system("touch " + name + ".pkl")
+    with open(name + '.pkl', 'wb') as f:
+        #pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+        pickle.dump(obj, f, protocol=2)
+
+
+def loadObj(name):
+    """
+    Load a pickle object.
+
+    INPUTS:
+    ----------
+    name     - the name of the pickle object
+
+    """
+
+    with open(name + '.pkl', 'rb') as f:
+        return pickle.load(f)
