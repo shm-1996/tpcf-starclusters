@@ -1,9 +1,8 @@
 from header import *
-from Galaxy_TPCF import *
 # from Galaxy_TPCF import linear_function
-def Plot_TPCF(corr,dcorr,bins,galaxy='NGC_628',output='/Users/shm/Desktop/WORK/\
-Cluster_2ptCorrelation/Results/Galaxies/NGC_628/',save=True) :
-    separation_bins = (bins[1:]+bins[:-1])/2
+def Plot_TPCF(galaxy,output=None,save=False) :
+
+    separation_bins = (galaxy.bins[1:]+galaxy.bins[:-1])/2
     separation_bins*=(1./arcsec_to_degree)
 
 
