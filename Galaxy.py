@@ -23,6 +23,12 @@ class Galaxy(object):
           Name of the galaxy
        distance : float
           Distance to the galaxy in Mpc 
+       inclination : float
+          Inclination of the galaxy in the line-of-sight
+       inclination_flag : bool
+          Flag to perform correction for inclination in the galaxies
+       inclination_done : bool
+          Flag to inform that inclination correction already done
        centre : tuple
           ra,dec of galaxy centre in fk5 notation
         no_bins : integer
@@ -59,13 +65,15 @@ class Galaxy(object):
         self.name= None
         self.distance = 0.0
         self.inclination = 0.0
+        self.deproject_galaxy = True
+        self.inclination_done = False
         self.centre = 0,0
         self.no_bins = 0
         self.bin_limits = [0,0]
         self.catalog_file = None
+        self.outdir = None
         self.fits_file = None
-        self.fit_values = [0,0,0,0,0]
-        self.fit_errors = [0,0,0,0,0]
+        
 
         # Read from info file if provided
         if(filename != None):
@@ -78,6 +86,10 @@ class Galaxy(object):
                 self.defaultGalaxyInfo(verbose=verbose)
             else:
                 raise myError("No provided galaxy or information file.")
+        # Obtain RA/DEC of all clusters
+        self.get_ra_dec()
+        # Set bins based on bin limits & no of bins
+        self.set_bins()
 
 
     ####################################################################
@@ -113,6 +125,18 @@ class Galaxy(object):
                 self.create_file(verbose=verbose)
             else:
                 self.readFile(filename=filename,verbose=verbose)
+
+            self.outdir = os.path.abspath('../Results/Galaxies/{}'.format(self.galaxy))
+            if(verbose):
+                print("Setting output directory to {}".format(self.outdir))
+                
+            if(os.path.exists(self.outdir+'/tpcf_bins.pkl')):
+                if(verbose):
+                   print("Loading TPCF values from file.") 
+                self.bins = loadObj(self.outdir+'/tpcf_bins')
+                self.corr = loadObj(self.outdir+'/tpcf_corr')
+                self.dcorr = loadObj(self.outdir+'/tpcf_dcorr')
+                self.bootstraps = loadObj(self.outdir+'/tpcf_bootstraps')
         
         else :
             raise myError("The galaxy information+catalog is not available."+
@@ -173,14 +197,32 @@ class Galaxy(object):
             self.galaxy+'.fits')
         if(verbose):
             print("Setting fits file = {}".format(fits_file))
+        region_file = os.path.abspath('../Data/Region_Files/') + '/' +\
+                self.galaxy + '.reg'
+        if(verbose):
+            print("Setting region file = {}".format(region_file))  
         #Write to info file
         info_file = info_directory + '/' + self.galaxy + '.info'
-        print(info_file)
         #Write in required format
         try: 
             fp = open(info_file,'w')
         except IOError:
             raise myError("Cannot write to file "+info_file)
+
+
+        # Read Position angles from position angle file
+        if(verbose):
+            print("Reading position angle information from Position_Angles.txt.")
+        Position_AngleFile = info_directory+'/Position_Angles.txt'
+        galaxy_names = np.loadtxt(Position_AngleFile,usecols=0,delimiter='\t',dtype=str)
+        galaxy_pa = np.loadtxt(Position_AngleFile,usecols=1,delimiter='\t',dtype=float)
+        #Convert self galaxy name to table name format
+        galaxy_formatted = self.galaxy.split("_")[1]
+        galaxy_formatted = '%04d'%int(galaxy_formatted)
+        galaxy_formatted = self.galaxy.split("_")[0] + ' ' + galaxy_formatted
+
+        index = np.where(galaxy_formatted == galaxy_names)
+        pa = galaxy_pa[index][0]
 
         self.distance = distance 
         self.inclination = inclination
@@ -188,6 +230,8 @@ class Galaxy(object):
         self.bin_limits = bin_limits 
         self.catalog_file = catalog_file
         self.fits_file = fits_file
+        self.pa = pa
+        self.region_file = region_file
 
 
         if(verbose):
@@ -210,12 +254,16 @@ class Galaxy(object):
         fp.write("# Inclination in degrees \n")
         fp.write("Inclination = {} \n\n".format(self.inclination))
 
+        # Position Angle
+        fp.write("# Position Angle in degrees \n")
+        fp.write("Position_Angle = {} \n\n".format(self.pa))
+
         # Number of bins
         fp.write("# Number of bins \n")
         fp.write("No_Bins = {} \n\n".format(self.no_bins))
 
         #Bin Limits
-        fp.write("# Bin Limits in arcsec")
+        fp.write("# Bin Limits in arcsec\n")
         fp.write("Bin_Low = {} \n".format(self.bin_limits[0]))
         fp.write("Bin_High = {} \n\n".format(self.bin_limits[1]))
 
@@ -226,6 +274,10 @@ class Galaxy(object):
         # Fits file
         fp.write("# Fits file \n")
         fp.write("Fits_File = {} \n\n".format(os.path.abspath(self.fits_file)))
+
+        # Region file
+        fp.write("# Region file \n")
+        fp.write("Region_File = {} \n\n".format(os.path.abspath(self.region_file)))
 
         #Close file
         fp.close()
@@ -269,6 +321,10 @@ class Galaxy(object):
                 self.inclination = float(linesplit2[0])
                 if(verbose):
                     print("Setting inclination = "+str(self.inclination) + " degrees")
+            elif linesplit[0].upper().strip() == 'POSITION_ANGLE':
+                self.pa = float(linesplit2[0])
+                if(verbose):
+                    print("Setting position angle = "+str(self.pa) + " degrees")
             elif linesplit[0].upper().strip() == 'NO_BINS':
                 self.no_bins = int(linesplit2[0])
                 if(verbose):
@@ -285,7 +341,6 @@ class Galaxy(object):
                         " arcsec")
             elif linesplit[0].upper().strip() == 'CATALOG_FILE':
                 self.catalog_file = os.path.abspath(str(linesplit2[0]).strip())
-                print(os.path.abspath(str(linesplit2[0]).strip()))
                 if(verbose):
                     print("Setting cluster catalog file = "+str(self.catalog_file))
 
@@ -294,6 +349,12 @@ class Galaxy(object):
 
                 if(verbose):
                     print("Setting HST fits file = "+str(self.fits_file))
+
+            elif linesplit[0].upper().strip() == 'REGION_FILE':
+                self.region_file = os.path.abspath(str(linesplit2[0]).strip())
+
+                if(verbose):
+                    print("Setting HST region file = "+str(self.region_file))
 
             else:
                 # Line does not correspond to any known keyword, so
@@ -355,44 +416,14 @@ class Galaxy(object):
                 .format(self.galaxy,random_method))
             else:
                 print("Computing TPCF for {} for cluster class {} using {} random method."
-                    .format(self.galaxy,self.cluster_class,random_method))
+                    .format(self.galaxy,cluster_class,random_method))
         
         if(verbose):
             print("Reading cluster positions from cluster catalog in {}"
                 .format(self.catalog_file))
 
-        file = np.loadtxt(self.catalog_file)
-        Class0_sources = np.where(file[:,33]==0)
-        Class1_sources = np.where(file[:,33]==1)
-        Class2_sources = np.where(file[:,33]==2)
-        Class3_sources = np.where(file[:,33]==3)
-        Class4_sources = np.where(file[:,33]==4)
-        Cluster_sources = np.append(Class1_sources,Class2_sources)
-        Cluster_sources = np.append(Class3_sources,Cluster_sources)
-        
-        # Compute TPCF for a subset of clusters if required
-        if(cluster_class == 1) :
-            RA = file[Class1_sources][:,3]
-            DEC = file[Class1_sources][:,4]
-        elif(cluster_class == 2) :
-            RA = file[Class2_sources][:,3]
-            DEC = file[Class2_sources][:,4]
-        elif(cluster_class == 3) :
-            RA = file[Class3_sources][:,3]
-            DEC = file[Class3_sources][:,4]
-        elif(cluster_class == -1) :
-            RA = file[Cluster_sources][:,3]
-            DEC = file[Cluster_sources][:,4]
-        else :
-            raise myError("Invalid cluster class passed.")
-
-        bin_min,bin_max = np.log10(self.bin_limits[0]*u.arcsec.to(u.deg)),\
-        np.log10(self.bin_limits[1]*u.arcsec.to(u.deg))
-        bins = np.logspace(bin_min,bin_max,self.no_bins)
-
-        self.ra = RA
-        self.dec = DEC
-        self.bins = bins
+        self.get_ra_dec(cluster_class=cluster_class)
+        self.set_bins()
 
         # Safety check for masked_radial method
         if random_method in ['masked_radial','masked']:
@@ -420,6 +451,84 @@ class Galaxy(object):
         self.dcorr = dcorr
         self.bootstraps = bootstraps
 
+        if(save):
+            saveObj(bins,self.outdir+'/tpcf_bins')
+            saveObj(corr,self.outdir+'/tpcf_corr')
+            saveObj(dcorr,self.outdir+'/tpcf_dcorr')
+            saveObj(bootstraps,self.outdir+'/tpcf_bootstraps')
+
+    ####################################################################
+    # Method to obtain ra dec of clusters
+    ####################################################################
+    def get_ra_dec(self,cluster_class=-1):
+        file = np.loadtxt(self.catalog_file)
+        Class0_sources = np.where(file[:,33]==0)
+        Class1_sources = np.where(file[:,33]==1)
+        Class2_sources = np.where(file[:,33]==2)
+        Class3_sources = np.where(file[:,33]==3)
+        Class4_sources = np.where(file[:,33]==4)
+        Cluster_sources = np.append(Class1_sources,Class2_sources)
+        Cluster_sources = np.append(Class3_sources,Cluster_sources)
+        
+        # Compute TPCF for a subset of clusters if required
+        if(cluster_class == 1) :
+            RA = file[Class1_sources][:,3]
+            DEC = file[Class1_sources][:,4]
+        elif(cluster_class == 2) :
+            RA = file[Class2_sources][:,3]
+            DEC = file[Class2_sources][:,4]
+        elif(cluster_class == 3) :
+            RA = file[Class3_sources][:,3]
+            DEC = file[Class3_sources][:,4]
+        elif(cluster_class == -1) :
+            RA = file[Cluster_sources][:,3]
+            DEC = file[Cluster_sources][:,4]
+        else :
+            raise myError("Invalid cluster class passed.")
+
+        self.ra = RA 
+        self.dec = DEC
+
+        self.ra_raw = RA 
+        self.dec_raw = DEC
+        if(self.deproject_galaxy == True):
+            self.correct_inclination(force=True,verbose=True)
+
+
+    ####################################################################
+    # Method to obtain set bins.
+    ####################################################################
+    def set_bins(self):
+        bin_min,bin_max = np.log10(self.bin_limits[0]*u.arcsec.to(u.deg)),\
+        np.log10(self.bin_limits[1]*u.arcsec.to(u.deg))
+        bins = np.logspace(bin_min,bin_max,self.no_bins)
+        self.bins = bins
+        self.bins_arcsec = bins*(1./arcsec_to_degree)
+
+
+    ####################################################################
+    # Method to correct for inclination.
+    ####################################################################
+    def correct_inclination(self,force=False,verbose=True):
+        if(force == False):
+            if(self.inclination_done == True):
+                raise myError("Inclination correction already performed." +
+                    " Use flag force =True if you want to force deproject.")
+        if(verbose):
+            print("Correcting for inclination of galaxy. This galaxy has PA = {}"
+                .format(self.pa) + " and inclination = {}".format(self.inclination))
+
+        self.ra_raw = self.ra
+        self.dec_raw = self.dec
+        # See Eq 1 Grasha et al 2017
+        ra_dep = self.ra*np.cos(self.pa) + self.dec*np.sin(self.pa)
+        dec_dep = -self.ra*np.sin(self.pa) + self.dec*np.cos(self.pa)
+        dec_dep = dec_dep/(np.cos(self.inclination))
+
+        self.ra = ra_dep 
+        self.dec = dec_dep
+
+        self.inclination_done = True
 
     ####################################################################
     # Method to create ds9 region file for FOV footprint
@@ -461,7 +570,6 @@ class Galaxy(object):
         if(verbose):
             print("Deleting files created by footprint in local directory.")
         unwanted_file = region_filebase + '_footprint.txt'
-        print(unwanted_file)
         subprocess.run(["rm",os.getcwd()+'/{}'.format(unwanted_file)],
             stdout=subprocess.DEVNULL)
         unwanted_file = region_filebase + '_footprint_ds9_linear.reg'
@@ -491,18 +599,16 @@ class Galaxy(object):
             None
 
         """
-        bin_min,bin_max = np.log10(self.bin_limits[0]*u.arcsec.to(u.deg)),\
-            np.log10(self.bin_limits[1]*u.arcsec.to(u.deg))
-        bins = np.logspace(bin_min,bin_max,self.no_bins)
+        bins = self.bins_arcsec
         separation_bins = (bins[1:]+bins[:-1])/2
-        separation_bins*=(1./arcsec_to_degree)
         
         separation_bins = separation_bins.astype(np.float)
-        corr_fit = corr[np.where(corr>0.0)].astype(np.float)
-        dcorr_fit = dcorr[np.where(corr>0.0)].astype(np.float)
-        separation_bins = separation_bins[np.where(corr>0.0)].astype(np.float)
+        corr_fit = self.corr[np.where(self.corr>0.0)].astype(np.float)
+        dcorr_fit = self.dcorr[np.where(self.corr>0.0)].astype(np.float)
+        separation_bins = separation_bins[np.where(self.corr>0.0)].astype(np.float)
         popt,pcov = curve_fit(linear_function,separation_bins,
             np.log(corr_fit),sigma=np.log(dcorr_fit))
+        
         
         self.fit_values = popt
         self.fit_errors = np.sqrt(np.diag(pcov))
