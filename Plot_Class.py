@@ -26,13 +26,6 @@ class myPlot():
         None
         
         """
-
-        if(self.corr is )
-        if((self.galaxy.fit_values == [0,0,0,0,0]) or (self.galaxy.fit_errors == [0,0,0,0,0])):
-            # Power law not fitted yet. Fit 
-            print("Fitting power law. Not fitted yet.")
-            self.galaxy.fit_power_law()
-        
         fig,axs = plt.subplots(ncols=1)
         ax2 = axs.secondary_xaxis("top",functions=(self.sep_to_pc,self.pc_to_sep))
         separation_bins = (self.galaxy.bins[1:]+self.galaxy.bins[:-1])/2
