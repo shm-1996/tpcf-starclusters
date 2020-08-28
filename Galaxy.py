@@ -123,17 +123,17 @@ class Galaxy(object):
             else:
                 self.readFile(filename=filename,verbose=verbose)
 
-            self.outdir = os.path.abspath('../Results/Galaxies/{}'.format(self.galaxy))
+            self.outdir = os.path.abspath('../Results/Galaxies/{}/'.format(self.galaxy))
             if(verbose):
                 print("Setting output directory to {}".format(self.outdir))
                 
-            if(os.path.exists(self.outdir+'/tpcf_bins.pkl')):
+            if(os.path.exists(self.outdir+'tpcf_bins.pkl')):
                 if(verbose):
                    print("Loading TPCF values from file.") 
-                self.bins = loadObj(self.outdir+'/tpcf_bins')
-                self.corr = loadObj(self.outdir+'/tpcf_corr')
-                self.dcorr = loadObj(self.outdir+'/tpcf_dcorr')
-                self.bootstraps = loadObj(self.outdir+'/tpcf_bootstraps')
+                self.bins = loadObj(self.outdir+'tpcf_bins')
+                self.corr = loadObj(self.outdir+'tpcf_corr')
+                self.dcorr = loadObj(self.outdir+'tpcf_dcorr')
+                self.bootstraps = loadObj(self.outdir+'tpcf_bootstraps')
         
         else :
             raise myError("The galaxy information+catalog is not available."+
@@ -449,10 +449,10 @@ class Galaxy(object):
         self.bootstraps = bootstraps
 
         if(save):
-            saveObj(bins,self.outdir+'/tpcf_bins')
-            saveObj(corr,self.outdir+'/tpcf_corr')
-            saveObj(dcorr,self.outdir+'/tpcf_dcorr')
-            saveObj(bootstraps,self.outdir+'/tpcf_bootstraps')
+            saveObj(bins,self.outdir+'tpcf_bins')
+            saveObj(corr,self.outdir+'tpcf_corr')
+            saveObj(dcorr,self.outdir+'tpcf_dcorr')
+            saveObj(bootstraps,self.outdir+'tpcf_bootstraps')
 
     ####################################################################
     # Method to obtain ra dec of clusters
@@ -579,6 +579,7 @@ class Galaxy(object):
 
     ####################################################################
     # Method to fit power law to TPCF
+    #TODO: MCMC fit. 
     ####################################################################
 
     def fit_power_law(self):
