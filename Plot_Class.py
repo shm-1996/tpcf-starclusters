@@ -206,9 +206,6 @@ class myPlot():
         #Plot now
         fig,axs = plt.subplots(ncols=1)
         label = ['Class 0', 'Class 1', 'Class 2', 'Class 3','Class 4']
-        # axs.bar([0,1,2,3,4],[N0,N1,N2,N3,N4],color='#F59005',tick_label=label,
-        #     label='{}'.format(self.galaxy.galaxy))
-        print('{}'.format(self.galaxy.galaxy))
         axs.bar([0,1,2,3,4],[N0,N1,N2,N3,N4],color='#F59005',tick_label=label)
         axs.set_xlabel('Cluster Class')
         axs.set_ylabel('Number')
@@ -219,6 +216,92 @@ class myPlot():
             plt.savefig(filename,bbox_inches='tight')
         else :
             plt.show()
+
+
+    def mass_histogram(self,save=False,filename=None):
+        """
+        Plot distribution of masses in each class of clusters.
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        
+        """ 
+
+        #Read file for distribution of masses in each class
+        file = np.loadtxt(self.galaxy.catalog_file)
+        M1 = file[np.where(file[:,33]==1)][:,19]
+        M2 = file[np.where(file[:,33]==2)][:,19]
+        M3 = file[np.where(file[:,33]==3)][:,19]
+        
+        #Plot now
+        fig,axs = plt.subplots(ncols=1)
+        axs.hist(np.log10(M1),bins='auto',histtype='step',log=True,
+            label='Class 1',color='#F51557')
+        axs.hist(np.log10(M2),bins='auto',histtype='step',log=True,
+            label='Class 2',color='#33A7F4')
+        axs.hist(np.log10(M3),bins='auto',histtype='step',log=True,
+            label='Class 3',color='#28F56E')
+
+        axs.set_xlabel(r'$\log_{10} \, \mathrm{Mass} \, (M_{\odot})$')
+        axs.set_ylabel(r'$\mathrm{Number}$')
+        axs.legend()
+        if(save):
+            if(filename == None) :
+                filename = self.galaxy.outdir+'/{}_MassDist'.format(self.galaxy.galaxy)
+            plt.savefig(filename,bbox_inches='tight')
+        else :
+            plt.show()
+
+
+    def age_histogram(self,save=False,filename=None):
+        """
+        Plot distribution of agees in each class of clusters.
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        
+        """ 
+
+        #Read file for distribution of ages in each class
+        file = np.loadtxt(self.galaxy.catalog_file)
+        A1 = file[np.where(file[:,33]==1)][:,16]
+        A2 = file[np.where(file[:,33]==2)][:,16]
+        A3 = file[np.where(file[:,33]==3)][:,16]
+
+        # # Ages are in yr. Convert to Myr.
+        # A1 /= 1.e6
+        # A2 /= 1.e6
+        # A3 /= 1.e6
+
+        
+        #Plot now
+        fig,axs = plt.subplots(ncols=1)
+        axs.hist(np.log10(A1),bins='auto',histtype='step',log=True,
+            label='Class 1',color='#F51557')
+        axs.hist(np.log10(A2),bins='auto',histtype='step',log=True,
+            label='Class 2',color='#33A7F4')
+        axs.hist(np.log10(A3),bins='auto',histtype='step',log=True,
+            label='Class 3',color='#28F56E')
+
+        axs.set_xlabel(r'$\log_{10} \, \mathrm{Age} \, (\mathrm{Myr})$')
+        axs.set_ylabel(r'$\mathrm{Number}$')
+        axs.legend()
+        if(save):
+            if(filename == None) :
+                filename = self.galaxy.outdir+'/{}_AgeDist'.format(self.galaxy.galaxy)
+            plt.savefig(filename,bbox_inches='tight')
+        else :
+            plt.show()
+
+
 
     def sep_to_pc(self,sep):
         """
