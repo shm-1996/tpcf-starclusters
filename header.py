@@ -50,8 +50,8 @@ def saveObj(obj, name):
 
     os.system("touch " + name + ".pkl")
     with open(name + '.pkl', 'wb') as f:
-        #pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
-        pickle.dump(obj, f, protocol=2)
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+        #pickle.dump(obj, f, protocol=2)
 
 
 def loadObj(name):
