@@ -495,13 +495,46 @@ class Galaxy(object):
     ####################################################################
     # Method to obtain set bins.
     ####################################################################
-    def set_bins(self):
-        bin_min,bin_max = np.log10(self.bin_limits[0]*u.arcsec.to(u.deg)),\
-        np.log10(self.bin_limits[1]*u.arcsec.to(u.deg))
-        bins = np.logspace(bin_min,bin_max,self.no_bins+1)
-        self.bins = bins
-        self.bin_centres = (self.bins[1:]+self.bins[:-1])/2
-        self.bins_arcsec = bins*(1./arcsec_to_degree)
+    def set_bins(self,no_bins=None,bin_limits=None):
+        """
+        Method to set the number of bins, allowing user to change no of bins
+        and bin limits, in which case bins recomputed. 
+        Parameters
+            no_bins : integer
+              Number of bins to set
+            bin_limits : tuple
+              Bin limits to set
+        Returns
+            None
+
+        """
+        if(no_bins == None and bin_limits == None):
+            bin_min,bin_max = np.log10(self.bin_limits[0]*u.arcsec.to(u.deg)),\
+            np.log10(self.bin_limits[1]*u.arcsec.to(u.deg))
+            bins = np.logspace(bin_min,bin_max,self.no_bins+1)
+            self.bins = bins
+            self.bin_centres = (self.bins[1:]+self.bins[:-1])/2
+            self.bins_arcsec = bins*(1./arcsec_to_degree)
+
+        else :
+            if(no_bins is not None):
+                no_bins = int(no_bins)
+                self.no_bins = no_bins
+                print("Changing number of bins to {}".format(no_bins))
+            if(bin_limits is not None):
+                bin_limits = float(no_bins)
+                self.bin_limits = bin_limits
+                print("Changing bin limits to {}".format(bin_limits))
+
+            print("Recomputing bins")
+            self.no_bins = no_bins 
+            bin_min,bin_max = np.log10(self.bin_limits[0]*u.arcsec.to(u.deg)),\
+            np.log10(self.bin_limits[1]*u.arcsec.to(u.deg))
+            bins = np.logspace(bin_min,bin_max,self.no_bins+1)
+            self.bins = bins
+            self.bin_centres = (self.bins[1:]+self.bins[:-1])/2
+            self.bins_arcsec = bins*(1./arcsec_to_degree)
+
 
 
     ####################################################################
