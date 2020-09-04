@@ -1,5 +1,6 @@
 from header import *
 from TPCF import *
+from sklearn.neighbors import KDTree
 
 class myPlot():
     """
@@ -28,7 +29,7 @@ class myPlot():
         """
         fig,axs = plt.subplots(ncols=1)
         ax2 = axs.secondary_xaxis("top",functions=(self.sep_to_pc,self.pc_to_sep))
-        separation_bins = (self.galaxy.bins[1:]+self.galaxy.bins[:-1])/2
+        separation_bins = self.galaxy.bin_centres
         separation_bins*=(1./arcsec_to_degree)
         
         #Try plotting directly if TPCF computed. Else compute.
@@ -48,6 +49,7 @@ class myPlot():
         except AttributeError:
             print("Power-law not fitted to TPCF yet. Fitting now.")
             self.galaxy.fit_power_law()
+            plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),100)
             axs.plot(separation_bins,np.exp(linear_function(separation_bins,self.galaxy.fit_values[0],
                 self.galaxy.fit_values[1],self.galaxy.fit_values[2],self.galaxy.fit_values[3],self.galaxy.fit_values[4])),
                 ls=':',label='fit')
@@ -85,7 +87,7 @@ class myPlot():
         #Initialise figure
         fig,axs = plt.subplots(ncols=1)
         ax2 = axs.secondary_xaxis("top",functions=(self.sep_to_pc,self.pc_to_sep))
-        separation_bins = (self.galaxy.bins[1:]+self.galaxy.bins[:-1])/2
+        separation_bins = self.galaxy.bin_centres
         separation_bins*=(1./arcsec_to_degree)
 
         #Compute TPCF for each class
@@ -112,7 +114,10 @@ class myPlot():
         axs.set_ylabel(r"$\omega_{\mathrm{LS}}\left(\theta \right)$")
         axs.set_xscale('log')
         axs.set_yscale('log')
+
+        #Secondary axis
         axs.callbacks.connect("xlim_changed", self.axs_to_parsec)
+        
         axs.legend()
         ax2.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
         if(save):
@@ -300,6 +305,61 @@ class myPlot():
             plt.savefig(filename,bbox_inches='tight')
         else :
             plt.show()
+
+    def bin_distribution(self,save=False,filename=None):
+        """
+        Plot distribution of pairs in each TPCF bin. 
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        None
+        
+        """         
+
+        #Get no of pairs for each class using KDTree two point correlation
+        counts_DD = np.zeros((3,self.galaxy.no_bins))
+        bins_transform = angular_dist_to_euclidean_dist(self.galaxy.bins)
+        for i in range(1,4):
+            self.galaxy.get_ra_dec(cluster_class=i)
+            xyz_clusters = np.asarray(ra_dec_to_xyz(self.galaxy.ra, 
+                                            self.galaxy.dec), order='F').T
+            KDT_D = KDTree(xyz_clusters)
+            counts = KDT_D.two_point_correlation(xyz_clusters, bins_transform)
+            counts_DD[i-1] = np.diff(counts)
+        #Reset RA/DEC
+        self.galaxy.get_ra_dec(cluster_class=-1)    
+
+        fig,axs = plt.subplots(ncols=1)
+        ax2 = axs.secondary_xaxis("top",functions=(self.sep_to_pc,self.pc_to_sep))
+        
+        axs.bar(self.galaxy.bins_arcsec[:-1],counts_DD[0],
+            align='edge',width=np.diff(self.galaxy.bins_arcsec),
+            color='#F51557',label='Class 1')
+        axs.bar(self.galaxy.bins_arcsec[:-1],counts_DD[1],
+                    align='edge',width=np.diff(self.galaxy.bins_arcsec),
+                    bottom=counts_DD[0],color='#4983FC',label='Class 2')
+        axs.bar(self.galaxy.bins_arcsec[:-1],counts_DD[2],
+                    align='edge',width=np.diff(self.galaxy.bins_arcsec),
+                    bottom=counts_DD[1],color='#FAC90E',label='Class 3')
+            
+        axs.set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
+        axs.set_ylabel(r'$\mathrm{N_{\mathrm{pairs}}}$')
+        axs.set_xscale('log')
+        axs.set_yscale('log')
+        axs.legend(loc='upper left')
+        
+        axs.callbacks.connect("xlim_changed", self.axs_to_parsec)
+
+        if(save):
+            if(filename == None) :
+                filename = self.galaxy.outdir+'/{}_BinDist'.format(self.galaxy.galaxy)
+            plt.savefig(filename,bbox_inches='tight')
+        else :
+            plt.show()
+
 
 
 
