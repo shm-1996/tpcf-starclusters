@@ -457,7 +457,7 @@ class Galaxy(object):
     ####################################################################
     # Method to obtain ra dec of clusters
     ####################################################################
-    def get_ra_dec(self,cluster_class=-1):
+    def get_ra_dec(self,cluster_class=-1,verbose=False):
         file = np.loadtxt(self.catalog_file)
         Class0_sources = np.where(file[:,33]==0)
         Class1_sources = np.where(file[:,33]==1)
@@ -489,7 +489,7 @@ class Galaxy(object):
         self.ra_raw = RA 
         self.dec_raw = DEC
         if(self.deproject_galaxy == True):
-            self.correct_inclination(force=True,verbose=True)
+            self.correct_inclination(force=True,verbose=verbose)
 
 
     ####################################################################
@@ -498,8 +498,9 @@ class Galaxy(object):
     def set_bins(self):
         bin_min,bin_max = np.log10(self.bin_limits[0]*u.arcsec.to(u.deg)),\
         np.log10(self.bin_limits[1]*u.arcsec.to(u.deg))
-        bins = np.logspace(bin_min,bin_max,self.no_bins)
+        bins = np.logspace(bin_min,bin_max,self.no_bins+1)
         self.bins = bins
+        self.bin_centres = (self.bins[1:]+self.bins[:-1])/2
         self.bins_arcsec = bins*(1./arcsec_to_degree)
 
 
@@ -582,7 +583,7 @@ class Galaxy(object):
     #TODO: MCMC fit. 
     ####################################################################
 
-    def fit_power_law(self):
+    def fit_power_law(self,method='bootstrap',N=1000):
         """
         Parameters
             filename : string
@@ -597,6 +598,10 @@ class Galaxy(object):
             None
 
         """
+        if(method not in ['single','bootstrap','mcmc']) :
+            raise ValueError("Method for fitting power law should be one of the"+
+            " following: single, bootstrap or mcmc")
+        
         bins = self.bins_arcsec
         separation_bins = (bins[1:]+bins[:-1])/2
         
@@ -604,13 +609,32 @@ class Galaxy(object):
         corr_fit = self.corr[np.where(self.corr>0.0)].astype(np.float)
         dcorr_fit = self.dcorr[np.where(self.corr>0.0)].astype(np.float)
         separation_bins = separation_bins[np.where(self.corr>0.0)].astype(np.float)
-        popt,pcov = curve_fit(linear_function,separation_bins,
-            np.log(corr_fit),sigma=np.log(dcorr_fit))
-        
-        
-        self.fit_values = popt
-        self.fit_errors = np.sqrt(np.diag(pcov))
 
+
+        if(method == 'single') :
+            popt,pcov = curve_fit(linear_function,separation_bins,
+                np.log(corr_fit),sigma=np.log(dcorr_fit))
+                  
+            self.fit_values = popt
+            self.fit_errors = np.sqrt(np.diag(pcov))
+
+        elif(method == 'bootstrap') :
+            fit_bootstraps = np.zeros((N,5))
+            for i in range(N):
+                y_fit = corr_fit + dcorr_fit*np.random.randn(1)
+
+                try:
+                #Fit to this
+                    popt,pcov = curve_fit(linear_function,separation_bins,
+                        np.log(y_fit))
+                except :
+                    continue
+
+                fit_bootstraps[i] = popt
+
+            self.fit_values = np.median(fit_bootstraps,axis=0)
+            self.fit_errors = np.std(fit_bootstraps,axis=0)
+            self.fit_distribution = fit_bootstraps
 
 
     
