@@ -36,7 +36,10 @@ def tpcf_galaxy(galaxy_name,method='masked_radial',outdir=None):
         print("Path for plots {} do not exist. Creating now"
             .format(galaxy_class.outdir))
 
-    #Compute TPCF
+    #Compute and fit TPCF for all classes
+    #TODO: Implement this
+
+    #Compute TPCF for combined
     galaxy_class.Compute_TPCF(verbose=True,save=True)
     #Fit power law
     galaxy_class.fit_power_law()
@@ -66,6 +69,7 @@ def plots_galaxy(pl,method='masked_radial',outdir=None):
     pl.class_distribution(save=True)
     pl.mass_histogram(save=True)
     pl.age_histogram(save=True)
+    pl.bin_distribution(save=True)
     pl.plot_TPCF(save=True)
     pl.plot_TPCF_allclass(random_method=method,save=True,verbose=True)
 
