@@ -3,3 +3,5 @@ Compute Two-Point Correlation Function of spatial distribution of Star Clusters 
 
 Data and cluster catalogues for the galaxies are available on the LEGUS survey webpage. 
 
+See main.py for run instructions and arguments. 
+
