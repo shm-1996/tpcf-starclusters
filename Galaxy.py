@@ -397,6 +397,8 @@ class Galaxy(object):
               can be 1,2,3 or -1 for 1+2+3 combined
             save : boolean
               flag to save bootstrap realisations of the TPCF
+            random_method : string
+                method to use to prepare the random catalog
             verbose : boolean
                 print out what is being done
 
@@ -448,8 +450,9 @@ class Galaxy(object):
         self.dcorr = dcorr
         self.bootstraps = bootstraps
 
+
         if(save):
-            saveObj(bins,self.outdir+'tpcf_bins')
+            saveObj(self.bins,self.outdir+'tpcf_bins')
             saveObj(corr,self.outdir+'tpcf_corr')
             saveObj(dcorr,self.outdir+'tpcf_dcorr')
             saveObj(bootstraps,self.outdir+'tpcf_bootstraps')

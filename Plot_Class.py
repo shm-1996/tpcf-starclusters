@@ -29,8 +29,7 @@ class myPlot():
         """
         fig,axs = plt.subplots(ncols=1)
         ax2 = axs.secondary_xaxis("top",functions=(self.sep_to_pc,self.pc_to_sep))
-        separation_bins = self.galaxy.bin_centres
-        separation_bins*=(1./arcsec_to_degree)
+        separation_bins = self.galaxy.bin_centres*(1./arcsec_to_degree)
         
         #Try plotting directly if TPCF computed. Else compute.
         try:
