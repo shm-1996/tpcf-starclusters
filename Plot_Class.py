@@ -42,16 +42,37 @@ class myPlot():
             fmt='.-')
 
         try:
+            break_theta = np.exp(self.galaxy.fit_values[3])
+            break_theta_error = np.exp(self.galaxy.fit_errors[3])
             axs.plot(separation_bins,np.exp(linear_function(separation_bins,self.galaxy.fit_values[0],
-                self.galaxy.fit_values[1],self.galaxy.fit_values[2],self.galaxy.fit_values[3],self.galaxy.fit_values[4])),
-                ls=':',label='fit')
+                self.galaxy.fit_values[1],self.galaxy.fit_values[2],self.galaxy.fit_values[3])),
+                ls='--',label='fit')
+            axs.plot(separation_bins,self.galaxy.corr,lw=0.0,
+                label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[1],self.galaxy.fit_errors[1]))
+            axs.plot(separation_bins,self.galaxy.corr,lw=0.0,
+                label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[2],self.galaxy.fit_errors[2]))
+            axs.axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
+                break_theta_error))
+            
+
+
         except AttributeError:
             print("Power-law not fitted to TPCF yet. Fitting now.")
             self.galaxy.fit_power_law()
             plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),100)
+            break_theta = np.exp(self.galaxy.fit_values[3])
+            break_theta_error = np.exp(self.galaxy.fit_errors[3])
             axs.plot(separation_bins,np.exp(linear_function(separation_bins,self.galaxy.fit_values[0],
-                self.galaxy.fit_values[1],self.galaxy.fit_values[2],self.galaxy.fit_values[3],self.galaxy.fit_values[4])),
-                ls=':',label='fit')
+                self.galaxy.fit_values[1],self.galaxy.fit_values[2],self.galaxy.fit_values[3])),
+                ls='--',label='fit')
+            axs.plot(separation_bins,self.galaxy.corr,lw=0.0,
+                label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[1],self.galaxy.fit_errors[1]))
+            axs.plot(separation_bins,self.galaxy.corr,lw=0.0,
+                label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[2],self.galaxy.fit_errors[2]))
+
+            axs.axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
+                break_theta_error))
+            
         
         axs.set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
         axs.set_ylabel(r"$\omega_{\mathrm{LS}}\left(\theta \right)$")
@@ -64,17 +85,26 @@ class myPlot():
             if(filename == None):
                 filename = self.galaxy.outdir+'/{}_TPCF.pdf'.format(self.galaxy.name)
             plt.savefig(filename,bbox_inches='tight')
+            plt.close()
         else :
             plt.show()
+
 
     def plot_TPCF_allclass(self,random_method = 'masked_radial',
         save=False,filename=None,verbose=False):
         """
         Plot TPCF of a galaxy for all classes comparing between them
 
-        Parameters
+       Parameters
         ----------
-        None
+        save : boolean
+            Flag to save the plot, else just show.
+        random_method: string
+            random method to use
+        filename : string
+            File to save to, else default filename 
+        verbose : string
+            Whether to print verbose
         
         Returns
         -------
@@ -123,6 +153,7 @@ class myPlot():
             if(filename == None):
                 filename = self.galaxy.outdir+'/{}_Classes_TPCF.pdf'.format(self.galaxy.name)
             plt.savefig(filename,bbox_inches='tight')
+            plt.close()
         else :
             plt.show()
 
@@ -131,9 +162,12 @@ class myPlot():
         """
         Plot spatial distribution of clusters in the galaxy
 
-        Parameters
+       Parameters
         ----------
-        None
+        save : boolean
+            Flag to save the plot, else just show.
+        filename : string
+            File to save to, else default filename 
         
         Returns
         -------
@@ -151,8 +185,9 @@ class myPlot():
                        fontsize=20)
         if(save):
             if(filename == None):
-                filename = self.galaxy.outdir+'/{}_clusters'.format(self.galaxy.galaxy)
+                filename = self.galaxy.outdir+'/{}_clusters'.format(self.galaxy.name)
             plt.savefig(filename,bbox_inches='tight')
+            plt.close()
         else :
             plt.show()
 
@@ -162,7 +197,12 @@ class myPlot():
         Plot spatial distribution of random catalog
         Parameters
         ----------
-        None
+        save : boolean
+            Flag to save the plot, else just show.
+        random_method : string
+            Random method in use
+        filename : string
+            File to save to, else default filename 
         
         Returns
         -------
@@ -192,7 +232,7 @@ class myPlot():
                        fontsize=20)
         if(save):
             if(filename == None) :
-                filename = self.galaxy.outdir+'/{}_random'.format(self.galaxy.galaxy) + \
+                filename = self.galaxy.outdir+'/{}_random'.format(self.galaxy.name) + \
                 '_{}'.format(random_method)
             plt.savefig(filename,bbox_inches='tight')
         else :
@@ -213,11 +253,11 @@ class myPlot():
         axs.bar([0,1,2,3,4],[N0,N1,N2,N3,N4],color='#F59005',tick_label=label)
         axs.set_xlabel('Cluster Class')
         axs.set_ylabel('Number')
-        axs.legend()
         if(save):
             if(filename == None) :
-                filename = self.galaxy.outdir+'/{}_ClassDist'.format(self.galaxy.galaxy)
+                filename = self.galaxy.outdir+'/{}_ClassDist'.format(self.galaxy.name)
             plt.savefig(filename,bbox_inches='tight')
+            plt.close()
         else :
             plt.show()
 
@@ -227,7 +267,10 @@ class myPlot():
         Plot distribution of masses in each class of clusters.
         Parameters
         ----------
-        None
+        save : boolean
+            Flag to save the plot, else just show.
+        filename : string
+            File to save to, else default filename 
         
         Returns
         -------
@@ -255,8 +298,9 @@ class myPlot():
         axs.legend()
         if(save):
             if(filename == None) :
-                filename = self.galaxy.outdir+'/{}_MassDist'.format(self.galaxy.galaxy)
+                filename = self.galaxy.outdir+'/{}_MassDist'.format(self.galaxy.name)
             plt.savefig(filename,bbox_inches='tight')
+            plt.close()
         else :
             plt.show()
 
@@ -266,7 +310,10 @@ class myPlot():
         Plot distribution of agees in each class of clusters.
         Parameters
         ----------
-        None
+        save : boolean
+            Flag to save the plot, else just show.
+        filename : string
+            File to save to, else default filename 
         
         Returns
         -------
@@ -300,8 +347,9 @@ class myPlot():
         axs.legend()
         if(save):
             if(filename == None) :
-                filename = self.galaxy.outdir+'/{}_AgeDist'.format(self.galaxy.galaxy)
+                filename = self.galaxy.outdir+'/{}_AgeDist'.format(self.galaxy.name)
             plt.savefig(filename,bbox_inches='tight')
+            plt.close()
         else :
             plt.show()
 
@@ -310,8 +358,10 @@ class myPlot():
         Plot distribution of pairs in each TPCF bin. 
         Parameters
         ----------
-        None
-        
+        save : boolean
+            Flag to save the plot, else just show.
+        filename : string
+            File to save to, else default filename 
         Returns
         -------
         None
@@ -354,8 +404,48 @@ class myPlot():
 
         if(save):
             if(filename == None) :
-                filename = self.galaxy.outdir+'/{}_BinDist'.format(self.galaxy.galaxy)
+                filename = self.galaxy.outdir+'/{}_BinDist'.format(self.galaxy.name)
             plt.savefig(filename,bbox_inches='tight')
+            plt.close()
+        else :
+            plt.show()
+
+
+    def galaxy_image(self,save=False,filename=None):
+
+        """
+        Plot optical HST image of galaxy. 
+        Parameters
+        ----------
+        save : boolean
+            Flag to save the plot, else just show.
+        filename : string
+            File to save to, else default filename 
+        
+        Returns
+        -------
+        None
+        
+        """         
+
+        hdu = fits.open(self.galaxy.fits_file)[0]
+        wcs = WCS(hdu.header)
+        fig = plt.figure(constrained_layout=True)
+        ax1 = fig.add_subplot(111,projection=wcs)
+
+        with np.errstate(divide='ignore', invalid='ignore'):
+            im = ax1.imshow(np.log10(hdu.data),vmin=-2.0)
+        cbar = fig.colorbar(im,ax = ax1,orientation='vertical')
+        cbar.ax.set_ylabel(r"$\log_{10} \, I$",rotation=90,labelpad=5,fontsize=20)
+        ax1.set_xlabel(r"$\mathrm{Right \; Ascension \; (J2000)}$",fontsize=20)
+        ax1.set_ylabel(r"$\mathrm{Declination \; (J2000)}$",labelpad=-0.8,
+                       fontsize=20)
+
+        if(save):
+            if(filename == None) :
+                filename = self.galaxy.outdir+'/{}_HSTImage'.format(self.galaxy.name)
+            plt.savefig(filename,bbox_inches='tight')
+            plt.close()
         else :
             plt.show()
 
