@@ -625,8 +625,8 @@ def bootstrap_two_point_angular(galaxy, method='standard',
     return corr, corr_err, bootstraps
 
 
-def linear_function(theta,A_1,A_2,alpha_1,alpha_2,beta) :
-    
+def linear_function(theta,A_1,alpha_1,alpha_2,beta) :
+    A_2 = A_1 
     function = np.piecewise(theta,[np.log(theta)<beta],[lambda theta :  A_1 + alpha_1 * np.log(theta), 
         lambda theta : A_2 + (alpha_1-alpha_2)*beta + alpha_2*np.log(theta)])
     return function
