@@ -4,7 +4,7 @@ from TPCF import *
 
 # Some defaults 
 default_bin_limits = 0.1,200
-default_no_of_bins = 8
+default_no_of_bins = 10
 
 class Galaxy(object):
     """
@@ -82,7 +82,7 @@ class Galaxy(object):
         #If not provided see if name of galaxy provided
         if(filename is None):
             if(galaxy_name):
-                self.galaxy = galaxy_name
+                self.name = galaxy_name.strip()
                 self.defaultGalaxyInfo(verbose=verbose)
             else:
                 raise myError("No provided galaxy or information file.")
@@ -108,12 +108,12 @@ class Galaxy(object):
             None
         """
         
-        if self.galaxy in list_of_galaxies:
+        if self.name in list_of_galaxies:
             if(verbose):
-                print("Computing TPCF for "+self.galaxy)
+                print("Computing TPCF for "+self.name)
 
             filename = os.path.abspath('../Data/Galaxy_Information/'+
-                self.galaxy+'.info')
+                self.name+'.info')
             #Check catalog file exists else throw error
             if(not os.path.exists(filename)) :
                 #Create file if it does not exist
@@ -123,7 +123,7 @@ class Galaxy(object):
             else:
                 self.readFile(filename=filename,verbose=verbose)
 
-            self.outdir = os.path.abspath('../Results/Galaxies/{}/'.format(self.galaxy))
+            self.outdir = os.path.abspath('../Results/Galaxies/{}/'.format(self.name))
             if(verbose):
                 print("Setting output directory to {}".format(self.outdir))
                 
@@ -171,9 +171,9 @@ class Galaxy(object):
         galaxy_distances = np.loadtxt(Legus_Table,usecols=5,delimiter='\t',dtype=float)
 
         #Convert self galaxy name to table name format
-        galaxy_formatted = self.galaxy.split("_")[1]
+        galaxy_formatted = self.name.split("_")[1]
         galaxy_formatted = '%04d'%int(galaxy_formatted)
-        galaxy_formatted = self.galaxy.split("_")[0] + ' ' + galaxy_formatted
+        galaxy_formatted = self.name.split("_")[0] + ' ' + galaxy_formatted
 
         index = np.where(galaxy_formatted == galaxy_names)
         distance = galaxy_distances[index][0]
@@ -183,23 +183,23 @@ class Galaxy(object):
         bin_limits = default_bin_limits
         if(verbose):
             print("Setting default bin limits of {}".format(bin_limits))
-        no_bins = 8
+        no_bins = default_no_of_bins
         if(verbose):
             print("Setting default no of bins = {}".format(no_bins))
         catalog_file = os.path.abspath('../Data/Cluster_Catalogues/' + 
-            self.galaxy+'.tab')
+            self.name+'.tab')
         if(verbose):
             print("Setting Catalog file = {}".format(catalog_file))
         fits_file = os.path.abspath('../Data/HST_Images/' + 
-            self.galaxy+'.fits')
+            self.name+'.fits')
         if(verbose):
             print("Setting fits file = {}".format(fits_file))
         region_file = os.path.abspath('../Data/Region_Files/') + '/' +\
-                self.galaxy + '.reg'
+                self.name + '.reg'
         if(verbose):
             print("Setting region file = {}".format(region_file))  
         #Write to info file
-        info_file = info_directory + '/' + self.galaxy + '.info'
+        info_file = info_directory + '/' + self.name + '.info'
         #Write in required format
         try: 
             fp = open(info_file,'w')
@@ -214,9 +214,9 @@ class Galaxy(object):
         galaxy_names = np.loadtxt(Position_AngleFile,usecols=0,delimiter='\t',dtype=str)
         galaxy_pa = np.loadtxt(Position_AngleFile,usecols=1,delimiter='\t',dtype=float)
         #Convert self galaxy name to table name format
-        galaxy_formatted = self.galaxy.split("_")[1]
+        galaxy_formatted = self.name.split("_")[1]
         galaxy_formatted = '%04d'%int(galaxy_formatted)
-        galaxy_formatted = self.galaxy.split("_")[0] + ' ' + galaxy_formatted
+        galaxy_formatted = self.name.split("_")[0] + ' ' + galaxy_formatted
 
         index = np.where(galaxy_formatted == galaxy_names)
         pa = galaxy_pa[index][0]
@@ -232,16 +232,16 @@ class Galaxy(object):
 
 
         if(verbose):
-            print("Writing info file for {}".format(self.galaxy))
+            print("Writing info file for {}".format(self.name))
 
         
         #Write header
-        fp.write("## Info file for {} \n".format(self.galaxy))
+        fp.write("## Info file for {} \n".format(self.name))
         fp.write('################################################# \n\n')
 
         #Name of galaxy
         fp.write("# Name of Galaxy \n")
-        fp.write("Name = {} \n\n".format(self.galaxy))
+        fp.write("Name = {} \n\n".format(self.name))
 
         # Distance
         fp.write("# Distance in Mpc \n")
@@ -363,7 +363,7 @@ class Galaxy(object):
         fp.close()
 
         #Compute ra/dec of centre of galaxy
-        ra_dec = SkyCoord.from_name(self.galaxy)
+        ra_dec = SkyCoord.from_name(self.name)
         ra = ra_dec.ra.value
         dec = ra_dec.dec.value
         self.centre = ra,dec
@@ -412,10 +412,10 @@ class Galaxy(object):
         if(verbose):
             if(cluster_class==-1):
                 print("Computing TPCF for {} for cluster class 1+2+3 using {} random method."
-                .format(self.galaxy,random_method))
+                .format(self.name,random_method))
             else:
                 print("Computing TPCF for {} for cluster class {} using {} random method."
-                    .format(self.galaxy,cluster_class,random_method))
+                    .format(self.name,cluster_class,random_method))
         
         if(verbose):
             print("Reading cluster positions from cluster catalog in {}"
@@ -427,7 +427,7 @@ class Galaxy(object):
         # Safety check for masked_radial method
         if random_method in ['masked_radial','masked']:
             self.region_file = os.path.abspath('../Data/Region_Files/') + '/' +\
-                self.galaxy + '.reg'
+                self.name + '.reg'
 
             #If region file not present, create it
             if(not os.path.exists(self.region_file)):
@@ -593,7 +593,7 @@ class Galaxy(object):
 
         # Copy created region file to directory
         self.region_file = os.path.abspath('../Data/Region_Files/' + 
-            self.galaxy + '.reg')
+            self.name + '.reg')
 
         shutil.copy(os.getcwd() + '/' + region_filename,self.region_file)
 
@@ -655,7 +655,7 @@ class Galaxy(object):
             self.fit_errors = np.sqrt(np.diag(pcov))
 
         elif(method == 'bootstrap') :
-            fit_bootstraps = np.zeros((N,5))
+            fit_bootstraps = np.zeros((N,4))
             for i in range(N):
                 y_fit = corr_fit + dcorr_fit*np.random.randn(1)
 
