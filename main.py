@@ -84,6 +84,7 @@ def plots_galaxy(pl,method='masked_radial',outdir=None,save=False):
         galaxy_class.outdir = outdir
 
     print("Plotting summary plots for Galaxy {}".format(pl.galaxy.name))
+    pl.galaxy_image(save=True)
     pl.plot_clusters(save=save)
     pl.plot_random(save=save,random_method=method)
     pl.class_distribution(save=save)
