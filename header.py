@@ -32,10 +32,10 @@ mpl.rc_file('/Users/shm/.matplotlib/matplotlibrc',
 
 ##### Some global quantities #########
 arcsec_to_degree = 1./3600.
-list_of_galaxies = ['NGC_628','NGC_1566','NGC_3344',
-        'NGC_3351','NGC_3627','NGC_3738','NGC_4395','NGC_4449','NGC_4656',
-        'NGC_5194','NGC_5253','NGC_5474','NGC_6503','NGC_7793']
-
+list_of_galaxies = ['NGC_0628','NGC_1566','NGC_3344',
+        'NGC_3351','NGC_3738','NGC_4395','NGC_4449','NGC_4656',
+        'NGC_5194','NGC_5238','NGC_5253','NGC_5474','NGC_5477','NGC_6503','NGC_7793']
+# NGC_1313: need to cmobine catalogue
 # Pickle Data Handling
 def saveObj(obj, name):
     """
