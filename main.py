@@ -88,11 +88,23 @@ def plots_galaxy(pl,method='masked_radial',outdir=None,save=False):
     pl.plot_clusters(save=save)
     pl.plot_random(save=save,random_method=method)
     pl.class_distribution(save=save)
-    pl.mass_histogram(save=save)
-    pl.age_histogram(save=save)
-    pl.bin_distribution(save=save)
+    try:
+        pl.mass_histogram(save=save)
+    except :
+        print("Issue with mass histogram. Cannot create image.")
+    try:
+        pl.age_histogram(save=save)
+    except :
+        print("Issue with age histogram. Cannot create image.")
+    try:
+        pl.bin_distribution(save=save)
+    except:
+        print("Some bins were empty so did not analyse bin dist for this galaxy.")
     pl.plot_TPCF(save=save)
-    pl.plot_TPCF_allclass(random_method=method,save=save,verbose=True)
+    try:
+        pl.plot_TPCF_allclass(random_method=method,save=save,verbose=True)
+    except: 
+        print("Some classes not available for this galaxy. Check class hist.")
 
 
 def tpcf_allgalaxies(method,overwrite=False,save=False) :
