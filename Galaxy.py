@@ -110,7 +110,7 @@ class Galaxy(object):
         
         if self.name in list_of_galaxies:
             if(verbose):
-                print("Computing TPCF for "+self.name)
+                print("Starting analysis for "+self.name)
 
             filename = os.path.abspath('../Data/Galaxy_Information/'+
                 self.name+'.info')
@@ -307,7 +307,7 @@ class Galaxy(object):
 
             # Read stuff based on the token that precedes the equal sign
             if linesplit[0].upper().strip() == 'NAME':
-                self.name = str(linesplit2[0]).rstrip()
+                self.name = str(linesplit2[0]).strip()
                 if(verbose) :
                     print("Setting galaxy = "+str(self.name))
             elif linesplit[0].upper().strip() == 'DISTANCE':
@@ -436,9 +436,6 @@ class Galaxy(object):
                 if(verbose):
                     print("Region file exists. Using region file {}".format(
                         self.region_file))
-
-        if(verbose):
-            print("Computing TPCF..........")
 
         corr,dcorr,bootstraps = bootstrap_two_point_angular(self,
                             method='landy-szalay',Nbootstraps=100,
