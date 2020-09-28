@@ -59,10 +59,10 @@ class myPlot():
         except AttributeError:
             print("Power-law not fitted to TPCF yet. Fitting now.")
             self.galaxy.fit_power_law()
-            plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),100)
+            plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
             break_theta = np.exp(self.galaxy.fit_values[3])
             break_theta_error = np.exp(self.galaxy.fit_errors[3])
-            axs.plot(separation_bins,np.exp(linear_function(separation_bins,self.galaxy.fit_values[0],
+            axs.plot(plot_points,np.exp(linear_function(plot_points,self.galaxy.fit_values[0],
                 self.galaxy.fit_values[1],self.galaxy.fit_values[2],self.galaxy.fit_values[3])),
                 ls='--',label='fit')
             axs.plot(separation_bins,self.galaxy.corr,lw=0.0,
@@ -401,7 +401,7 @@ class myPlot():
         axs.legend(loc='upper left')
         
         axs.callbacks.connect("xlim_changed", self.axs_to_parsec)
-
+        ax2.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
         if(save):
             if(filename == None) :
                 filename = self.galaxy.outdir+'/{}_BinDist'.format(self.galaxy.name)
