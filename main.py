@@ -45,7 +45,7 @@ def tpcf_galaxy(galaxy_name,method='masked_radial',outdir=None,overwrite=False):
     if(overwrite is False):
         if(os.path.isfile(galaxy_class.outdir+
             '{}_summary.pkl'.format(galaxy_class.name))):
-            
+            print("Summary file exists and overwrite=False. Reading existing file.")
             galaxy_class = loadObj(galaxy_class.outdir+
             '{}_summary'.format(galaxy_class.name))
             return galaxy_class
@@ -60,9 +60,14 @@ def tpcf_galaxy(galaxy_name,method='masked_radial',outdir=None,overwrite=False):
     #TODO: Implement this
 
     #Compute TPCF for combined
-    galaxy_class.Compute_TPCF(verbose=True,save=True,random_method=method)
+    try:
+        galaxy_class.Compute_TPCF(verbose=True,save=True,random_method=method)
+        galaxy_class.fit_power_law()
+    except:
+        print("TPCF could not be computed/not fitted for galaxy {}.".format(galaxy_class.name))
     #Fit power law
-    galaxy_class.fit_power_law()
+    
+
 
     return galaxy_class
 
@@ -100,7 +105,10 @@ def plots_galaxy(pl,method='masked_radial',outdir=None,save=False):
         pl.bin_distribution(save=save)
     except:
         print("Some bins were empty so did not analyse bin dist for this galaxy.")
-    pl.plot_TPCF(save=save)
+    try:
+        pl.plot_TPCF(save=save)
+    except:
+        print("TPCF could not be plotted.")
     try:
         pl.plot_TPCF_allclass(random_method=method,save=save,verbose=True)
     except: 
