@@ -1,6 +1,7 @@
 from header import *
 from astropy.coordinates import SkyCoord
 from TPCF import *
+import copy
 
 # Some defaults 
 default_bin_limits = 0.1,200
@@ -668,6 +669,40 @@ class Galaxy(object):
             self.fit_values = np.median(fit_bootstraps,axis=0)
             self.fit_errors = np.std(fit_bootstraps,axis=0)
             self.fit_distribution = fit_bootstraps
+
+    # def read_summary(self,filename=None,method='masked_radial'):
+    #     """
+    #     Read pickle file where the class is saved as an object. 
+    #     Parameters:
+    #         filename: string
+    #             Summary file to read
+    #         method: string
+    #             Random catalog method for correct output directory
+
+        
+    #     """
+    #     if(filename is None):
+    #         if(method.upper() == 'MASKED'):
+    #             method_dir = 'Masked/'
+    #         elif(method.upper() == 'UNIFORM'):
+    #             method_dir = 'Uniform/'
+    #         elif(method.upper() == 'MASKED_RADIAL'):
+    #             method_dir = 'Masked_Radial/'
+    #         else:
+    #             raise myError("Method not recognised.")
+
+    #         filename = self.outdir+'/'+ method_dir+'{}_summary.pkl'.format(self.name)
+
+
+    #     if(os.path.isfile(filename)):
+
+    #         print("Loading class object from {}".format(filename))
+    #         file = loadObj(filename.split('.pkl')[0])
+
+            
+    #     else :
+    #         raise myError("Summary class file {} not present.".format(filename))
+            
 
 
     
