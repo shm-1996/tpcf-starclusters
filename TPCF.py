@@ -207,8 +207,14 @@ def masked_random_sample(galaxy,len_random=100):
     random_y = min_y+ np.random.random(len_random)*max_y
     random_xy = np.vstack((random_x,random_y)).T
 
-    # Check whether point lies in the masked region
+    #Consider possibility of multiple regions
+    size_regions = np.size(region)
     mask_xy = region[0].contains(regions.PixCoord(random_x,random_y))
+    for i in range(1,size_regions):
+        mask_xy += region[i].contains(regions.PixCoord(random_x,random_y))
+
+    # Check whether point lies in the masked region
+    # mask_xy = region[0].contains(regions.PixCoord(random_x,random_y))
     random_xy_masked = random_xy[mask_xy]
     
     ra_dec_masked = wcs.wcs_pix2world(random_xy_masked,0)
