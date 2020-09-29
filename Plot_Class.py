@@ -14,7 +14,7 @@ class myPlot():
         
         
         
-    def plot_TPCF(self,save=False,filename=None):
+    def plot_TPCF(self,save=False,function='piecewise',filename=None):
         """
         Plot TPCF of a galaxy
 
@@ -30,6 +30,9 @@ class myPlot():
         fig,axs = plt.subplots(ncols=1)
         ax2 = axs.secondary_xaxis("top",functions=(self.sep_to_pc,self.pc_to_sep))
         separation_bins = self.galaxy.bin_centres*(1./arcsec_to_degree)
+
+        if(function not in ['piecewise','smooth']):
+            raise ValueError("This funtional form does not exist.")
         
         #Try plotting directly if TPCF computed. Else compute.
         try:
@@ -42,11 +45,22 @@ class myPlot():
             fmt='.-')
 
         try:
-            break_theta = np.exp(self.galaxy.fit_values[3])
-            break_theta_error = np.exp(self.galaxy.fit_errors[3])
-            axs.plot(separation_bins,np.exp(linear_function(separation_bins,self.galaxy.fit_values[0],
-                self.galaxy.fit_values[1],self.galaxy.fit_values[2],self.galaxy.fit_values[3])),
-                ls='--',label='fit')
+            
+            plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
+            if(function == 'piecewise'):
+                axs.plot(plot_points,np.exp(linear_function(plot_points,self.galaxy.fit_values[0],
+                    self.galaxy.fit_values[1],self.galaxy.fit_values[2],self.galaxy.fit_values[3])),
+                    ls='--',label='fit')
+                break_theta = np.exp(self.galaxy.fit_values[3])
+                break_theta_error = np.exp(self.galaxy.fit_errors[3])
+            elif(function == 'smooth'):
+                axs.plot(plot_points,smooth_function(plot_points,self.galaxy.fit_values[0],
+                    self.galaxy.fit_values[1],self.galaxy.fit_values[2],self.galaxy.fit_values[3]),
+                    ls='--',label='fit')
+                break_theta = self.galaxy.fit_values[3]
+                break_theta_error = self.galaxy.fit_errors[3]
+
+                
             axs.plot(separation_bins,self.galaxy.corr,lw=0.0,
                 label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[1],self.galaxy.fit_errors[1]))
             axs.plot(separation_bins,self.galaxy.corr,lw=0.0,
@@ -58,7 +72,7 @@ class myPlot():
 
         except AttributeError:
             print("Power-law not fitted to TPCF yet. Fitting now.")
-            self.galaxy.fit_power_law()
+            self.galaxy.fit_power_law(function=function)
             plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
             break_theta = np.exp(self.galaxy.fit_values[3])
             break_theta_error = np.exp(self.galaxy.fit_errors[3])

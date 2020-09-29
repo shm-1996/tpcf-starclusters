@@ -630,7 +630,7 @@ class Galaxy(object):
     #TODO: MCMC fit. 
     ####################################################################
 
-    def fit_power_law(self,method='bootstrap',N=1000):
+    def fit_power_law(self,method='bootstrap',function='piecewise',N=1000):
         """
         Parameters
             filename : string
@@ -638,6 +638,8 @@ class Galaxy(object):
             cluster_class : integer
               class of clusters for which TPCF to be computed
               can be 1,2,3 or -1 for 1+2+3 combined
+            function : string
+                function to fit to the TPCF
             save : boolean
               flag to save bootstrap realisations of the TPCF
 
@@ -648,6 +650,8 @@ class Galaxy(object):
         if(method not in ['single','bootstrap','mcmc']) :
             raise ValueError("Method for fitting power law should be one of the"+
             " following: single, bootstrap or mcmc")
+        if(function not in ['piecewise','smooth']):
+            raise ValueError("This funtional form does not exist.")
         
         bins = self.bins_arcsec
         separation_bins = (bins[1:]+bins[:-1])/2
@@ -659,8 +663,13 @@ class Galaxy(object):
 
 
         if(method == 'single') :
-            popt,pcov = curve_fit(linear_function,separation_bins,
-                np.log(corr_fit),sigma=np.log(dcorr_fit))
+            if(function == 'piecewise'):
+
+                popt,pcov = curve_fit(linear_function,separation_bins,
+                    np.log(corr_fit),sigma=np.log(dcorr_fit))
+            elif(function == 'smooth'):
+                popt,pcov = curve_fit(smooth_function,separation_bins,
+                    corr_fit,sigma=dcorr_fit)
                   
             self.fit_values = popt
             self.fit_errors = np.sqrt(np.diag(pcov))
@@ -672,8 +681,12 @@ class Galaxy(object):
 
                 try:
                 #Fit to this
-                    popt,pcov = curve_fit(linear_function,separation_bins,
-                        np.log(y_fit))
+                    if(function == 'piecewise'):
+                        popt,pcov = curve_fit(linear_function,separation_bins,
+                            np.log(y_fit),sigma=np.log(dcorr_fit))
+                    elif(function == 'smooth'):
+                        popt,pcov = curve_fit(smooth_function,separation_bins,
+                            corr_fit,sigma=dcorr_fit)
                 except :
                     continue
 
