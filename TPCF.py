@@ -636,4 +636,8 @@ def linear_function(theta,A_1,alpha_1,alpha_2,beta) :
     function = np.piecewise(theta,[np.log(theta)<beta],[lambda theta :  A_1 + alpha_1 * np.log(theta), 
         lambda theta : A_2 + (alpha_1-alpha_2)*beta + alpha_2*np.log(theta)])
     return function
+
+def smooth_function(theta,A1,alpha_1,alpha_2,beta):
+    function = A1*((theta/beta)**alpha_1 + (theta/beta)**alpha_2)
+    return function
         

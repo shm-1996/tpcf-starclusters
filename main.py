@@ -3,7 +3,7 @@ from Galaxy import *
 from Plot_Class import *
 
 
-def tpcf_galaxy(galaxy_name,method='masked_radial',outdir=None,overwrite=False):
+def tpcf_galaxy(galaxy_name,method='masked_radial',function='piecewise',outdir=None,overwrite=False):
     """
     Perform all required computations for one galaxy.
     Parameters
@@ -62,7 +62,7 @@ def tpcf_galaxy(galaxy_name,method='masked_radial',outdir=None,overwrite=False):
     #Compute TPCF for combined
     try:
         galaxy_class.Compute_TPCF(verbose=True,save=True,random_method=method)
-        galaxy_class.fit_power_law()
+        galaxy_class.fit_power_law(function=function)
     except:
         print("TPCF could not be computed/not fitted for galaxy {}.".format(galaxy_class.name))
     #Fit power law
@@ -71,7 +71,7 @@ def tpcf_galaxy(galaxy_name,method='masked_radial',outdir=None,overwrite=False):
 
     return galaxy_class
 
-def plots_galaxy(pl,method='masked_radial',outdir=None,save=False):
+def plots_galaxy(pl,method='masked_radial',function='piecewise',outdir=None,save=False):
     """
     Plot all the required output plots for each galaxy.
     Parameters
@@ -106,7 +106,7 @@ def plots_galaxy(pl,method='masked_radial',outdir=None,save=False):
     except:
         print("Some bins were empty so did not analyse bin dist for this galaxy.")
     try:
-        pl.plot_TPCF(save=save)
+        pl.plot_TPCF(save=save,function=function)
     except:
         print("TPCF could not be plotted.")
     try:
@@ -115,7 +115,7 @@ def plots_galaxy(pl,method='masked_radial',outdir=None,save=False):
         print("Some classes not available for this galaxy. Check class hist.")
 
 
-def tpcf_allgalaxies(method,overwrite=False,save=False) :
+def tpcf_allgalaxies(method,function,overwrite=False,save=False) :
     """
     Plot all the required output plots for all galaxies.
     Parameters
@@ -130,9 +130,9 @@ def tpcf_allgalaxies(method,overwrite=False,save=False) :
     print("Computing TPCF for all galaxies in LEGUS Survey.")
     for galaxy_name in list_of_galaxies:
         print("Calculating TPCF for galaxy {}".format(galaxy_name))
-        galaxy_class = tpcf_galaxy(galaxy_name,method,overwrite=overwrite)
+        galaxy_class = tpcf_galaxy(galaxy_name,method,function,overwrite=overwrite)
         plot_class = myPlot(galaxy_class)
-        plots_galaxy(plot_class,method,save=save)
+        plots_galaxy(plot_class,method,function,save=save)
         
         #Save galaxy class info as pickle file
         path_exists = os.path.isfile(galaxy_class.outdir+
@@ -160,6 +160,8 @@ if __name__ == "__main__":
         help = 'Alternate output directory for plots and files.')
     ap.add_argument('-overwrite',action='store_true',
         help='overwrite computation of TPCF.Default: False.')
+    ap.add_argument('-function',action='store',type=str,default='piecewise',
+        help='Functional form to fit to TPCF: "piecewise" and "smooth" ')
     ap.add_argument('-show_only',action='store_true',
         help='Invoke this flag to only show the plots and not save them.')
     args = vars(ap.parse_args())
@@ -168,6 +170,10 @@ if __name__ == "__main__":
     if(method not in ['uniform','masked','masked_radial']):
         raise ValueError("This method does not exist. Allowed values are "+
             "'Uniform', 'Masked', and 'Masked_Radial'.")
+
+    function = args['function'].lower()
+    if(function not in ['piecewise','smooth']):
+        raise ValueError("This functional form does not exist.")
     galaxy_name = args['galaxy'].upper()
     if(args['outdir'] is not None):
         output_directory = os.path.abspath(args['outdir']+'/')
@@ -189,7 +195,7 @@ if __name__ == "__main__":
     if(galaxy_name is not None):
          #for all galaxies
         if(galaxy_name == 'ALL'):
-            tpcf_allgalaxies(method,overwrite=args['overwrite'],save=save)
+            tpcf_allgalaxies(method,function=function,overwrite=args['overwrite'],save=save)
         elif(galaxy_name in list_of_galaxies):
 
             print("Running tpcf-starclusters for {}.".format(galaxy_name))
