@@ -4,7 +4,7 @@ from TPCF import *
 import copy
 
 # Some defaults 
-default_bin_limits = 0.1,200
+default_bin_limits = 10,5000
 default_no_of_bins = 10
 
 class Galaxy(object):
@@ -179,6 +179,7 @@ class Galaxy(object):
         index = np.where(galaxy_formatted == galaxy_names)
         distance = galaxy_distances[index][0]
         inclination = galaxy_inclinations[index][0]
+        
 
         #Setting default bin info, defined in header.py
         bin_limits = default_bin_limits
@@ -261,7 +262,7 @@ class Galaxy(object):
         fp.write("No_Bins = {} \n\n".format(self.no_bins))
 
         #Bin Limits
-        fp.write("# Bin Limits in arcsec\n")
+        fp.write("# Bin Limits in parsec\n")
         fp.write("Bin_Low = {} \n".format(self.bin_limits[0]))
         fp.write("Bin_High = {} \n\n".format(self.bin_limits[1]))
 
@@ -331,12 +332,12 @@ class Galaxy(object):
                 self.bin_limits[0] = float(linesplit2[0])
                 if(verbose):
                     print("Setting lower bin limit for TPCF = "+str(self.bin_limits[0]) +
-                         " arcsec")
+                         " parsec")
             elif linesplit[0].upper().strip() == 'BIN_HIGH':
                 self.bin_limits[1] = float(linesplit2[0])
                 if(verbose):
                     print("Setting upper bin limit for TPCF = "+str(self.bin_limits[1]) +
-                        " arcsec")
+                        " parsec")
             elif linesplit[0].upper().strip() == 'CATALOG_FILE':
                 self.catalog_file = os.path.abspath(str(linesplit2[0]).strip())
                 if(verbose):
@@ -496,41 +497,53 @@ class Galaxy(object):
     ####################################################################
     # Method to obtain set bins.
     ####################################################################
-    def set_bins(self,no_bins=None,bin_limits=None):
+    def set_bins(self,set_no_bins=None,set_bin_limits=None):
         """
         Method to set the number of bins, allowing user to change no of bins
         and bin limits, in which case bins recomputed. 
         Parameters
-            no_bins : integer
+            set_no_bins : integer
               Number of bins to set
-            bin_limits : tuple
-              Bin limits to set
+            set_bin_limits : tuple
+              Bin limits to set in parsec
         Returns
             None
 
         """
-        if(no_bins == None and bin_limits == None):
-            bin_min,bin_max = np.log10(self.bin_limits[0]*u.arcsec.to(u.deg)),\
-            np.log10(self.bin_limits[1]*u.arcsec.to(u.deg))
+        
+        bin_limits = [0,0]
+        if(set_no_bins == None and set_bin_limits == None):
+            #Convert bin limits in parsec to arcsec
+            distance = self.distance*const.Parsec*1.e6
+            bin_limits[0]= self.bin_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
+            bin_limits[1] = self.bin_limits[1]*const.Parsec/distance*u.radian.to(u.arcsec)
+
+            bin_min,bin_max = np.log10(bin_limits[0]*u.arcsec.to(u.deg)),\
+            np.log10(bin_limits[1]*u.arcsec.to(u.deg))
             bins = np.logspace(bin_min,bin_max,self.no_bins+1)
             self.bins = bins
             self.bin_centres = (self.bins[1:]+self.bins[:-1])/2
             self.bins_arcsec = bins*(1./arcsec_to_degree)
 
         else :
-            if(no_bins is not None):
-                no_bins = int(no_bins)
+            if(set_no_bins is not None):
+                set_no_bins = int(set_no_bins)
                 self.no_bins = no_bins
-                print("Changing number of bins to {}".format(no_bins))
-            if(bin_limits is not None):
-                bin_limits = float(no_bins)
-                self.bin_limits = bin_limits
-                print("Changing bin limits to {}".format(bin_limits))
+                print("Changing number of bins to {}".format(set_no_bins))
+            if(set_bin_limits is not None):
+                set_bin_limits = float(set_bin_limits)
+                self.bin_limits = set_bin_limits
+                print("Changing bin limits to {}".format(set_bin_limits))
 
             print("Recomputing bins")
-            self.no_bins = no_bins 
-            bin_min,bin_max = np.log10(self.bin_limits[0]*u.arcsec.to(u.deg)),\
-            np.log10(self.bin_limits[1]*u.arcsec.to(u.deg))
+            self.no_bins = set_no_bins 
+            #Convert bin limits in parsec to arcsec
+            distance = self.distance*const.Parsec*1.e6
+            bin_limits[0]= self.bin_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
+            bin_limits[1] = self.bin_limits[1]*const.Parsec/distance*u.radian.to(u.arcsec)
+
+            bin_min,bin_max = np.log10(bin_limits[0]*u.arcsec.to(u.deg)),\
+            np.log10(bin_limits[1]*u.arcsec.to(u.deg))
             bins = np.logspace(bin_min,bin_max,self.no_bins+1)
             self.bins = bins
             self.bin_centres = (self.bins[1:]+self.bins[:-1])/2
