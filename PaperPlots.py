@@ -116,7 +116,7 @@ def Combined_TPCF(save=False,outdir='../Results/',indir=None,method='masked_radi
 
 
     if(save):
-        filename = outdir+'Combined_TPCF_Masked.pdf'
+        filename = outdir+'Combined_TPCF_NoBounds.pdf'
         plt.savefig(filename,bbox_inches='tight')
         plt.close()
     else :
@@ -257,6 +257,95 @@ def Combined_Clusters(save=False,outdir='../Results/',indir=None,method='masked_
         plt.close()
     else :
         plt.show()
+
+def Scatter_Correlations(save=False,outdir='../Results/',indir=None,method='masked_radial'):
+    #Create figure and axs instance
+    if(indir == None):
+        indir = os.path.abspath('../Results/Galaxies/')+'/'
+        method_dir = ''
+    else :
+        method_dir = None
+
+    #Directories
+    indir = os.path.abspath(indir)+'/'
+    outir = os.path.abspath(outdir)+'/'
+
+    if(method_dir is not None):
+        if(method.upper() == 'MASKED'):
+            method_dir = 'Masked/'
+        elif(method.upper() == 'UNIFORM'):
+            method_dir = 'Uniform/'
+        elif(method.upper() == 'MASKED_RADIAL'):
+            method_dir = 'Masked_Radial/'
+        else:
+            raise myError("Method not recognised.")
+
+    
+    i,j = 0,0
+    #Loop through the galaxies
+    distance = np.zeros(np.size(list_of_galaxies))
+    T_value = np.zeros(np.size(list_of_galaxies))
+    SFR = np.zeros(np.size(list_of_galaxies))
+    R_25 = np.zeros(np.size(list_of_galaxies))
+    alpha = np.zeros(np.size(list_of_galaxies))
+    alpha_error = np.zeros(np.size(list_of_galaxies))
+    index = 0
+
+    for galaxy_name in list_of_galaxies:
+        if(method_dir == None):
+            galaxy_dir = indir+galaxy_name+'/'            
+        else :
+            galaxy_dir = indir+galaxy_name+'/'+method_dir
+
+        galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
+        galaxy_class.read_galaxyprops()
+        distance[index] = galaxy_class.distance
+        SFR[index] = galaxy_class.sfr
+        R_25[index] = galaxy_class.r25
+        T_value[index] = galaxy_class.T_value
+        T_value[index] = galaxy_class.T_value
+        alpha[index] = galaxy_class.fit_values[1]
+        alpha_error[index] = galaxy_class.fit_errors[1]
+        index +=1
+
+
+
+    fig,axs = plt.subplots(nrows=2,ncols=2,figsize=(12,8))
+
+    axs[0,0].errorbar(distance,alpha,yerr=alpha_error,elinewidth=3.0,fmt='s',
+        ms=8.0,color='#E200E690')
+    axs[0,0].set_xlabel(r"$\mathrm{D} \, \left( \mathrm{Mpc} \right)$")
+    axs[0,0].set_ylabel(r"$\alpha_1$")
+
+    axs[0,1].errorbar(R_25/(const.Parsec*1.e3),alpha,yerr=alpha_error,elinewidth=3.0,fmt='s',
+        ms=8.0,color='#E200E690')
+    axs[0,1].set_xlabel(r"$\mathrm{R}_{25} \, \left( \mathrm{kpc} \right)$")
+    
+
+    axs[1,0].errorbar(T_value,alpha,yerr=alpha_error,elinewidth=3.0,fmt='s',
+        ms=8.0,color='#E200E690')
+    axs[1,0].set_xlabel(r"$\mathrm{T_{\mathrm{Hubble}}}$")
+    axs[1,0].set_ylabel(r"$\alpha_1$")
+    axs[1,0].set_xlim(3,10)
+
+    axs[1,1].errorbar(SFR,alpha,yerr=alpha_error,elinewidth=3.0,fmt='s',
+        ms=8.0,color='#E200E690')
+    axs[1,1].set_xlabel(r"$SFR_{\mathrm{UV}} \, \left( M_\odot \, \mathrm{yr}^{-1} \right)$")
+    axs[1,1].set_xlim(-0.5,12)
+
+
+    if(save):
+        filename = outdir+'Correlations_alpha1.pdf'
+        plt.savefig(filename,bbox_inches='tight')
+        plt.close()
+    else :
+        plt.show()
+
+
+
+
+
+
 
 if __name__ == "__main__":
     print("Preparing plots of paper.")
