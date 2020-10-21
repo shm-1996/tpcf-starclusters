@@ -70,7 +70,11 @@ def random_distribution_probability(RA,DEC,distance_hist,xyz_centre,region_file,
     wcs = WCS(hdu.header)
 
     random_x,random_y = wcs.wcs_world2pix(RA,DEC,0)
+    #Consider possibility of multiple regions
+    size_regions = np.size(region)
     mask_xy = region[0].contains(regions.PixCoord(random_x,random_y))
+    for i in range(1,size_regions):
+        mask_xy += region[i].contains(regions.PixCoord(random_x,random_y))
     
     xyz_array = np.array(ra_dec_to_xyz(RA,DEC))
     distance = np.sqrt((xyz_array[0]-xyz_centre[0])**2 + (xyz_array[1]-\
@@ -640,4 +644,10 @@ def linear_function(theta,A_1,alpha_1,alpha_2,beta) :
 def smooth_function(theta,A1,alpha_1,alpha_2,beta):
     function = A1*((theta/beta)**alpha_1 + (theta/beta)**alpha_2)
     return function
+
+def onepowerlaw_function(theta,A1,alpha_1) :
+    function = A1 + alpha_1*np.log(theta)
+    return function
+
+    
         
