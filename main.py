@@ -58,13 +58,15 @@ def tpcf_galaxy(galaxy_name,method='masked_radial',function='piecewise',outdir=N
 
     #Compute and fit TPCF for all classes
     #TODO: Implement this
+    galaxy_class.Compute_TPCF(verbose=True,save=True,random_method=method)
+    galaxy_class.fit_power_law(function=function,use_bounds=True)
 
     #Compute TPCF for combined
-    try:
-        galaxy_class.Compute_TPCF(verbose=True,save=True,random_method=method)
-        galaxy_class.fit_power_law(function=function)
-    except:
-        print("TPCF could not be computed/not fitted for galaxy {}.".format(galaxy_class.name))
+    # try:
+    #     galaxy_class.Compute_TPCF(verbose=True,save=True,random_method=method)
+    #     galaxy_class.fit_power_law(function=function)
+    # except:
+    #     print("TPCF could not be computed/not fitted for galaxy {}.".format(galaxy_class.name))
     #Fit power law
     
 
@@ -130,9 +132,9 @@ def tpcf_allgalaxies(method,function,overwrite=False,save=False) :
     print("Computing TPCF for all galaxies in LEGUS Survey.")
     for galaxy_name in list_of_galaxies:
         print("Calculating TPCF for galaxy {}".format(galaxy_name))
-        galaxy_class = tpcf_galaxy(galaxy_name,method,function,overwrite=overwrite)
+        galaxy_class = tpcf_galaxy(galaxy_name,method=method,function=function,overwrite=overwrite)
         plot_class = myPlot(galaxy_class)
-        plots_galaxy(plot_class,method,function,save=save)
+        plots_galaxy(plot_class,method=method,function=function,save=save)
         
         #Save galaxy class info as pickle file
         path_exists = os.path.isfile(galaxy_class.outdir+
@@ -199,10 +201,10 @@ if __name__ == "__main__":
         elif(galaxy_name in list_of_galaxies):
 
             print("Running tpcf-starclusters for {}.".format(galaxy_name))
-            galaxy_class = tpcf_galaxy(galaxy_name,method,output_directory, 
+            galaxy_class = tpcf_galaxy(galaxy_name,method=method,outdir=output_directory,function=function,
                 overwrite=args['overwrite'])
             plot_class = myPlot(galaxy_class)
-            plots_galaxy(plot_class,method,output_directory,save=save)
+            plots_galaxy(plot_class,method=method,outdir=output_directory,function=function,save=save)
             print("Saving class object of {} as pickle file.".format(galaxy_class.name))
             saveObj(galaxy_class,galaxy_class.outdir+'{}_summary'
             .format(galaxy_class.name))
