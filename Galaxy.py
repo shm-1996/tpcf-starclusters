@@ -576,9 +576,9 @@ class Galaxy(object):
         self.ra_raw = self.ra
         self.dec_raw = self.dec
         # See Eq 1 Grasha et al 2017
-        ra_dep = self.ra*np.cos(self.pa) + self.dec*np.sin(self.pa)
-        dec_dep = -self.ra*np.sin(self.pa) + self.dec*np.cos(self.pa)
-        dec_dep = dec_dep/(np.cos(self.inclination))
+        ra_dep = self.ra*np.cos(self.pa) - self.dec*np.sin(self.pa)
+        dec_dep = self.ra*np.sin(self.pa) + self.dec*np.cos(self.pa)
+        ra_dep = ra_dep/(np.cos(self.inclination))
 
         self.ra = ra_dep 
         self.dec = dec_dep

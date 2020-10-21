@@ -159,9 +159,9 @@ def masked_radial_random_sample(galaxy,len_random=100) :
 
     # Deproject random sample
     if(galaxy.deproject_galaxy == True):
-        ra_random = ra_accepted*np.cos(galaxy.pa) + dec_accepted*np.sin(galaxy.pa)
-        dec_random = -ra_accepted*np.sin(galaxy.pa) + dec_accepted*np.cos(galaxy.pa)
-        dec_random = dec_random/(np.cos(galaxy.inclination))
+        ra_random = ra_accepted*np.cos(galaxy.pa) - dec_accepted*np.sin(galaxy.pa)
+        dec_random = ra_accepted*np.sin(galaxy.pa) + dec_accepted*np.cos(galaxy.pa)
+        ra_random = ra_random/(np.cos(galaxy.inclination))
     else : 
         ra_random, dec_random = ra_accepted, dec_accepted
 
@@ -226,9 +226,9 @@ def masked_random_sample(galaxy,len_random=100):
 
     # Deproject random sample
     if(galaxy.deproject_galaxy == True):
-        ra_random = ra_masked*np.cos(galaxy.pa) + dec_masked*np.sin(galaxy.pa)
-        dec_random = -ra_masked*np.sin(galaxy.pa) + dec_masked*np.cos(galaxy.pa)
-        dec_random = dec_random/(np.cos(galaxy.inclination))
+        ra_random = ra_masked*np.cos(galaxy.pa) - dec_masked*np.sin(galaxy.pa)
+        dec_random = ra_masked*np.sin(galaxy.pa) + dec_masked*np.cos(galaxy.pa)
+        ra_random = ra_random/(np.cos(galaxy.inclination))
     else : 
         ra_random, dec_random = ra_masked, dec_masked
 
@@ -268,9 +268,9 @@ def uniform_sphere(galaxy, len_random=100,ignore_deproject=False):
     RA = RAlim[0] + (RAlim[1] - RAlim[0]) * np.random.random(len_random)
 
     if(galaxy.deproject_galaxy == True and ignore_deproject == False):
-        ra_random = RA*np.cos(galaxy.pa) + DEC*np.sin(galaxy.pa)
-        dec_random = -RA*np.sin(galaxy.pa) + DEC*np.cos(galaxy.pa)
-        dec_random = dec_random/(np.cos(galaxy.inclination))
+        ra_random = RA*np.cos(galaxy.pa) - DEC*np.sin(galaxy.pa)
+        dec_random = RA*np.sin(galaxy.pa) + DEC*np.cos(galaxy.pa)
+        ra_random = ra_random/(np.cos(galaxy.inclination))
     else : 
         ra_random, dec_random = RA, DEC
 
