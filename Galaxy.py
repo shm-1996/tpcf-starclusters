@@ -465,8 +465,15 @@ class Galaxy(object):
     def get_ra_dec(self,cluster_class=-1,verbose=False):
         file = np.loadtxt(self.catalog_file)
         Class0_sources = np.where(file[:,33]==0)
-        Class1_sources = np.where(file[:,33]==1)
-        Class2_sources = np.where(file[:,33]==2)
+
+        # Pick out Machine Learning Catalogs for NGC 5194 for Class 1 & 2
+        if(self.name == 'NGC_5194'):
+            Class1_sources = np.where((file[:,33]==1) | (file[:,34]==1))
+            Class2_sources = np.where((file[:,33]==2) | (file[:,34]==2))
+        else :
+            Class1_sources = np.where(file[:,33]==1)
+            Class2_sources = np.where(file[:,33]==2)
+        
         Class3_sources = np.where(file[:,33]==3)
         Class4_sources = np.where(file[:,33]==4)
         Cluster_sources = np.append(Class1_sources,Class2_sources)
