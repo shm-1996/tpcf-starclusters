@@ -31,7 +31,7 @@ class myPlot():
         ax2 = axs.secondary_xaxis("top",functions=(self.sep_to_pc,self.pc_to_sep))
         separation_bins = self.galaxy.bin_centres*(1./arcsec_to_degree)
 
-        if(function not in ['piecewise','smooth']):
+        if(function not in ['piecewise','smooth','singlepl']):
             raise ValueError("This funtional form does not exist.")
         
         #Try plotting directly if TPCF computed. Else compute.
@@ -53,20 +53,27 @@ class myPlot():
                     ls='--',label='fit')
                 break_theta = np.exp(self.galaxy.fit_values[3])
                 break_theta_error = np.exp(self.galaxy.fit_errors[3])
+                
             elif(function == 'smooth'):
                 axs.plot(plot_points,smooth_function(plot_points,self.galaxy.fit_values[0],
                     self.galaxy.fit_values[1],self.galaxy.fit_values[2],self.galaxy.fit_values[3]),
                     ls='--',label='fit')
                 break_theta = self.galaxy.fit_values[3]
                 break_theta_error = self.galaxy.fit_errors[3]
+            elif(function == 'singlepl'):
+                axs.plot(plot_points,np.exp(onepowerlaw_function(plot_points,self.galaxy.fit_values[0],
+                    self.galaxy.fit_values[1])),
+                    ls='--',label='fit')
 
                 
             axs.plot(separation_bins,self.galaxy.corr,lw=0.0,
                 label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[1],self.galaxy.fit_errors[1]))
-            axs.plot(separation_bins,self.galaxy.corr,lw=0.0,
-                label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[2],self.galaxy.fit_errors[2]))
-            axs.axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
-                break_theta_error))
+            
+            if(function in ['piecewise','smooth']):
+                axs.plot(separation_bins,self.galaxy.corr,lw=0.0,
+                    label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[2],self.galaxy.fit_errors[2]))
+                axs.axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
+                    break_theta_error))
             
 
 
