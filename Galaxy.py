@@ -4,7 +4,7 @@ from TPCF import *
 import copy
 
 # Some defaults 
-default_bin_limits = 10,5000
+default_bin_limits = 10,2000
 default_no_of_bins = 10
 
 class Galaxy(object):
@@ -91,6 +91,8 @@ class Galaxy(object):
         self.get_ra_dec()
         # Set bins based on bin limits & no of bins
         self.set_bins()
+        # Read galaxy properties
+        self.read_galaxyprops()
 
 
     ####################################################################
@@ -231,6 +233,7 @@ class Galaxy(object):
         self.fits_file = fits_file
         self.pa = pa
         self.region_file = region_file
+        self.read_galaxyprops()
 
 
         if(verbose):
@@ -630,7 +633,7 @@ class Galaxy(object):
     #TODO: MCMC fit. 
     ####################################################################
 
-    def fit_power_law(self,method='bootstrap',function='piecewise',N=1000):
+    def fit_power_law(self,method='bootstrap',function='piecewise',N=1000,use_bounds=True):
         """
         Parameters
             filename : string
@@ -662,14 +665,28 @@ class Galaxy(object):
         separation_bins = separation_bins[np.where(self.corr>0.0)].astype(np.float)
 
 
+        #Parameter limits
+        beta_limits = [50.0, 300.0]
+
+        distance = self.distance*const.Parsec*1.e6
+        #beta limits in arcseca
+        beta_limits[0]= beta_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
+        beta_limits[1] = beta_limits[1]*const.Parsec/distance*u.radian.to(u.arcsec)
+
+        if(function=='piecewise'):
+            bounds = ([-10.0,-3.0,-3.0,np.log(beta_limits[0])],[10.0,0.0,0.0,np.log(beta_limits[1])])
+        else:
+             bounds = ([-10.0,-3.0,-3.0,beta_limits[0]],[10.0,0.0,0.0,beta_limits[1]])
+
         if(method == 'single') :
             if(function == 'piecewise'):
-
+               
+                #bounds = ([-10,10],[-3.0,0.0],[-3.0,0.0],[np.log(beta_limits[0]),np.log(beta_limits[1])])
                 popt,pcov = curve_fit(linear_function,separation_bins,
-                    np.log(corr_fit),sigma=np.log(dcorr_fit))
+                    np.log(corr_fit),sigma=np.log(dcorr_fit),bounds=bounds)
             elif(function == 'smooth'):
                 popt,pcov = curve_fit(smooth_function,separation_bins,
-                    corr_fit,sigma=dcorr_fit)
+                    corr_fit,sigma=dcorr_fit,bounds=bounds)
                   
             self.fit_values = popt
             self.fit_errors = np.sqrt(np.diag(pcov))
@@ -682,11 +699,19 @@ class Galaxy(object):
                 try:
                 #Fit to this
                     if(function == 'piecewise'):
-                        popt,pcov = curve_fit(linear_function,separation_bins,
-                            np.log(y_fit),sigma=np.log(dcorr_fit))
+                        if(use_bounds):
+                            popt,pcov = curve_fit(linear_function,separation_bins,
+                                np.log(y_fit),sigma=np.log(dcorr_fit),bounds=bounds)
+                        else:
+                            popt,pcov = curve_fit(linear_function,separation_bins,
+                                np.log(y_fit),sigma=np.log(dcorr_fit))
                     elif(function == 'smooth'):
-                        popt,pcov = curve_fit(smooth_function,separation_bins,
-                            corr_fit,sigma=dcorr_fit)
+                        if(use_bounds):
+                            popt,pcov = curve_fit(smooth_function,separation_bins,
+                                corr_fit,sigma=dcorr_fit,bounds=bounds)
+                        else:
+                            popt,pcov = curve_fit(linear_function,separation_bins,
+                                np.log(y_fit),sigma=np.log(dcorr_fit))
                 except :
                     continue
 
@@ -695,6 +720,56 @@ class Galaxy(object):
             self.fit_values = np.median(fit_bootstraps,axis=0)
             self.fit_errors = np.std(fit_bootstraps,axis=0)
             self.fit_distribution = fit_bootstraps
+
+
+    def read_galaxyprops(self):
+        """
+        Reads galaxy properties from Calzetti et al table.
+
+        """
+        info_directory = os.path.abspath('../Data/Galaxy_Information')
+        Legus_Table = info_directory+'/Calzetti_Table.txt'
+
+        #Convert self galaxy name to table name format
+        galaxy_formatted = self.name.split("_")[1]
+        galaxy_formatted = '%04d'%int(galaxy_formatted)
+        galaxy_formatted = self.name.split("_")[0] + ' ' + galaxy_formatted
+
+        galaxy_names = np.loadtxt(Legus_Table,usecols=0,delimiter='\t',dtype=str)
+        index = np.where(galaxy_formatted == galaxy_names)
+
+
+        morph_type = np.loadtxt(Legus_Table,usecols=2,delimiter='\t',dtype=str)
+        self.morph_type = morph_type[index][0]
+
+        T_value = np.loadtxt(Legus_Table,usecols=3,delimiter='\t',dtype=str)
+        self.T_value = float(T_value[index][0].split('(')[0])
+
+        if(self.name in ['NGC_1313',]):
+            sfr = np.loadtxt(Legus_Table,usecols=9,delimiter='\t',dtype=str)
+            mstar = np.loadtxt(Legus_Table,usecols=10,delimiter='\t',dtype=str)
+        elif(self.name in ['NGC_3738','NGC_4449','NGC_4656','NGC_6503']):
+            sfr = np.loadtxt(Legus_Table,usecols=10,delimiter='\t',dtype=str)
+            mstar = np.loadtxt(Legus_Table,usecols=11,delimiter='\t',dtype=str)
+        else :
+            sfr = np.loadtxt(Legus_Table,usecols=11,delimiter='\t',dtype=str)
+            mstar = np.loadtxt(Legus_Table,usecols=12,delimiter='\t',dtype=str)
+
+        self.sfr = float(sfr[index][0])
+        self.mstar = float(mstar[index][0])
+
+        R25File = info_directory+'/R25.txt'
+        galaxy_names = np.loadtxt(R25File,usecols=0,delimiter='\t',dtype=str)
+        index = np.where(galaxy_formatted == galaxy_names)
+        galaxy_r25 = np.loadtxt(R25File,usecols=1,delimiter='\t',dtype=float)[index][0]
+
+        #Convert from arcmin to degree
+        galaxy_r25 = galaxy_r25*60*u.arcsec.to(u.radian)
+        galaxy_r25 = galaxy_r25 * self.distance*const.Parsec*1.e6
+        #Convert from degrees to arcsec
+
+        self.r25 = galaxy_r25
+
 
     # def read_summary(self,filename=None,method='masked_radial'):
     #     """
@@ -730,8 +805,10 @@ class Galaxy(object):
     #         raise myError("Summary class file {} not present.".format(filename))
             
 
-
     
+
+
+
 
 class myError(Exception):
     """
