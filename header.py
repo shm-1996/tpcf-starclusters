@@ -25,6 +25,7 @@ import scipy
 #Visualisation
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import cmasher as cmr
 mpl.style.use('classic')
 mpl.rc_file('/Users/shm/.matplotlib/matplotlibrc',
     use_default_template=False)

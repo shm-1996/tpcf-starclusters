@@ -432,7 +432,7 @@ class myPlot():
             plt.show()
 
 
-    def galaxy_image(self,save=False,filename=None):
+    def hst_image(self,save=False,filename=None):
 
         """
         Plot optical HST image of galaxy. 
@@ -470,7 +470,101 @@ class myPlot():
         else :
             plt.show()
 
+    def galaxy_image(self,save=False,filename=None):
+        """
+        Overplot clusters on optical HST image of galaxy, colored by age. 
+        Parameters
+        ----------
+        save : boolean
+            Flag to save the plot, else just show.
+        filename : string
+            File to save to, else default filename 
+        
+        Returns
+        -------
+        None
+        
+        """  
 
+        hdu = fits.open(self.galaxy.fits_file)[0]
+        hdu.data[np.where(hdu.data <= 1.e-1)] = np.nan
+
+        wcs_galaxy = WCS(hdu.header)
+        fig = plt.figure(constrained_layout=False)
+        ax1 = fig.add_subplot(111,projection=wcs_galaxy)
+
+        #Plot HST image
+        with np.errstate(divide='ignore', invalid='ignore'):
+            im = ax1.imshow(np.log10(hdu.data),vmin=-2.0)
+        
+        #Convert ra/dec to pixel coordinates
+        xpix,ypix = wcs_galaxy.all_world2pix(self.galaxy.ra_raw,self.galaxy.dec_raw,0)
+        
+        #Read ages
+        ages = self.galaxy.get_cluster_ages()
+
+        #Plot scatter
+        cmap = cmr.waterlily
+        im1 = ax1.scatter(xpix,ypix,c=np.log10(ages),alpha=0.5,cmap=cmap)
+        cbar = fig.colorbar(im1,ax = ax1,use_gridspec=False,
+                            orientation='vertical',pad=0.00,aspect=30)
+        cbar.ax.set_ylabel(r"$\log_{10} \, \mathrm{Age}$",rotation=90,labelpad=5,fontsize=20)
+        ax1.set_xlabel(r"$\mathrm{Right \; Ascension \; (J2000)}$",fontsize=16)
+        ax1.set_ylabel(r"$\mathrm{Declination \; (J2000)}$",labelpad=-1.2,
+                       fontsize=16)
+        #Find extents of clusters
+        ra_min,ra_max = np.min(self.galaxy.ra_raw),np.max(self.galaxy.ra_raw)
+        dec_min,dec_max = np.min(self.galaxy.dec_raw),np.max(self.galaxy.dec_raw)
+        imax,jmin = np.floor(wcs_galaxy.all_world2pix(ra_min,dec_min,0)).astype(int)
+        imin,jmax = np.floor(wcs_galaxy.all_world2pix(ra_max,dec_max,0)).astype(int)
+
+
+        #Set axis limits to these limits
+        ax1.set_xlim(imin-100,imax+100)
+        ax1.set_ylim(jmin-100,jmax+100)
+        scale = self.scale_to_plot(0.1,0.1,ax1)
+        ax1.add_line(scale)
+        ax1.annotate(r'$1 \, \mathrm{kpc}$',(0.1,0.05),xycoords='axes fraction',
+                    fontsize=12)       
+
+
+        if(save):
+            if(filename == None) :
+                filename = self.galaxy.outdir+'/{}_galaxyImage'.format(self.galaxy.name)
+            plt.savefig(filename,bbox_inches='tight')
+            plt.close()
+        else :
+            plt.show()
+
+    def scale_to_plot(self,xcen,ycen,axs,length=1.e3) :
+        """
+        Return scale bar to add on plot.    
+
+        Returns
+        -------
+        scale_bar: lines.line2D object
+        """
+        import matplotlib.lines as lines    
+        
+        hdu = fits.open(self.galaxy.fits_file)[0]
+        wcs_galaxy = WCS(hdu.header)
+
+        #Find length per pixel
+        xmin,xmax = axs.get_xlim()
+        ymin,ymax = axs.get_ylim()
+        total_pixels = xmax-xmin
+
+        ra_min = wcs_galaxy.all_pix2world(xmin,ymin,0)[0]
+        ra_max = wcs_galaxy.all_pix2world(xmax,ymin,0)[0]
+        length_per_pixel = np.abs(ra_max-ra_min)*3600./(total_pixels)
+        length_per_pixel = self.sep_to_pc(length_per_pixel)
+        
+        no_of_pixels = np.abs(length/length_per_pixel)
+        no_of_pixels = no_of_pixels/total_pixels
+        scale_bar = lines.Line2D([xcen,xcen+no_of_pixels],[ycen],
+                                 lw=1,color='black',
+                                transform=axs.transAxes) 
+        return scale_bar
 
 
     def sep_to_pc(self,sep):
