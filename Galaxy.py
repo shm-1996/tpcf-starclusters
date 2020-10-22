@@ -503,6 +503,77 @@ class Galaxy(object):
         if(self.deproject_galaxy == True):
             self.correct_inclination(force=True,verbose=verbose)
 
+    ####################################################################
+    # Method to obtain ages of clusters
+    ####################################################################
+
+    def get_cluster_ages(self,cluster_class=-1,verbose=False):
+        file = np.loadtxt(self.catalog_file)
+        Class0_sources = np.where(file[:,33]==0)
+
+        # Pick out Machine Learning Catalogs for NGC 5194 for Class 1 & 2
+        if(self.name == 'NGC_5194'):
+            Class1_sources = np.where((file[:,33]==1) | (file[:,34]==1))
+            Class2_sources = np.where((file[:,33]==2) | (file[:,34]==2))
+        else :
+            Class1_sources = np.where(file[:,33]==1)
+            Class2_sources = np.where(file[:,33]==2)
+        
+        Class3_sources = np.where(file[:,33]==3)
+        Class4_sources = np.where(file[:,33]==4)
+        Cluster_sources = np.append(Class1_sources,Class2_sources)
+        Cluster_sources = np.append(Class3_sources,Cluster_sources)
+        
+        # Compute TPCF for a subset of clusters if required
+        if(cluster_class == 1) :
+            ages = file[Class1_sources][:,16]            
+        elif(cluster_class == 2) :
+            ages = file[Class2_sources][:,16]
+        elif(cluster_class == 3) :
+            ages = file[Class3_sources][:,16]
+        elif(cluster_class == -1) :
+            ages = file[Cluster_sources][:,16]
+        else :
+            raise myError("Invalid cluster class passed.")
+
+        return ages
+
+
+    ####################################################################
+    # Method to obtain masses of clusters
+    ####################################################################
+
+    def get_cluster_masses(self,cluster_class=-1,verbose=False):
+        file = np.loadtxt(self.catalog_file)
+        Class0_sources = np.where(file[:,33]==0)
+
+        # Pick out Machine Learning Catalogs for NGC 5194 for Class 1 & 2
+        if(self.name == 'NGC_5194'):
+            Class1_sources = np.where((file[:,33]==1) | (file[:,34]==1))
+            Class2_sources = np.where((file[:,33]==2) | (file[:,34]==2))
+        else :
+            Class1_sources = np.where(file[:,33]==1)
+            Class2_sources = np.where(file[:,33]==2)
+        
+        Class3_sources = np.where(file[:,33]==3)
+        Class4_sources = np.where(file[:,33]==4)
+        Cluster_sources = np.append(Class1_sources,Class2_sources)
+        Cluster_sources = np.append(Class3_sources,Cluster_sources)
+        
+        # Compute TPCF for a subset of clusters if required
+        if(cluster_class == 1) :
+            masses = file[Class1_sources][:,19]            
+        elif(cluster_class == 2) :
+            masses = file[Class2_sources][:,19]
+        elif(cluster_class == 3) :
+            masses = file[Class3_sources][:,19]
+        elif(cluster_class == -1) :
+            masses = file[Cluster_sources][:,19]
+        else :
+            raise myError("Invalid cluster class passed.")
+
+        return masses
+        
 
     ####################################################################
     # Method to obtain set bins.
