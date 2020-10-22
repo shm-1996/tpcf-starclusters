@@ -495,7 +495,7 @@ class myPlot():
 
         #Plot HST image
         with np.errstate(divide='ignore', invalid='ignore'):
-            im = ax1.imshow(np.log10(hdu.data),vmin=-2.0)
+            im = ax1.imshow(np.log10(hdu.data),vmin=-2.0,alpha=0.4)
         
         #Convert ra/dec to pixel coordinates
         xpix,ypix = wcs_galaxy.all_world2pix(self.galaxy.ra_raw,self.galaxy.dec_raw,0)
