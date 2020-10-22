@@ -489,22 +489,29 @@ class myPlot():
         hdu = fits.open(self.galaxy.fits_file)[0]
         hdu.data[np.where(hdu.data <= 1.e-1)] = np.nan
 
+        #Read ages and masses
+        ages = self.galaxy.get_cluster_ages()
+        masses = self.galaxy.get_cluster_masses()
+
+        #Colormap for scatter
+        cmap = cmr.waterlily
+
+        #Convert ra/dec to pixel coordinates
         wcs_galaxy = WCS(hdu.header)
-        fig = plt.figure(constrained_layout=False)
-        ax1 = fig.add_subplot(111,projection=wcs_galaxy)
+        xpix,ypix = wcs_galaxy.all_world2pix(self.galaxy.ra_raw,self.galaxy.dec_raw,0)
+
+       
+        fig = plt.figure(tight_layout=False,figsize=(8,4))
+        
+        ax1 = fig.add_subplot(121,projection=wcs_galaxy)
 
         #Plot HST image
         with np.errstate(divide='ignore', invalid='ignore'):
             im = ax1.imshow(np.log10(hdu.data),vmin=-2.0,alpha=0.4)
         
-        #Convert ra/dec to pixel coordinates
-        xpix,ypix = wcs_galaxy.all_world2pix(self.galaxy.ra_raw,self.galaxy.dec_raw,0)
-        
-        #Read ages
-        ages = self.galaxy.get_cluster_ages()
 
         #Plot scatter
-        cmap = cmr.waterlily
+        
         im1 = ax1.scatter(xpix,ypix,c=np.log10(ages),alpha=0.5,cmap=cmap)
         cbar = fig.colorbar(im1,ax = ax1,use_gridspec=False,
                             orientation='vertical',pad=0.00,aspect=30)
@@ -520,12 +527,34 @@ class myPlot():
 
 
         #Set axis limits to these limits
-        ax1.set_xlim(imin-100,imax+100)
-        ax1.set_ylim(jmin-100,jmax+100)
+        ax1.set_xlim(imin-500,imax+500)
+        ax1.set_ylim(jmin-500,jmax+500)
         scale = self.scale_to_plot(0.1,0.1,ax1)
         ax1.add_line(scale)
         ax1.annotate(r'$1 \, \mathrm{kpc}$',(0.1,0.05),xycoords='axes fraction',
-                    fontsize=12)       
+                    fontsize=12)   
+
+
+        #####################################################################
+        ax2 = fig.add_subplot(122,projection=wcs_galaxy)
+
+        with np.errstate(divide='ignore', invalid='ignore'):
+            im = ax2.imshow(np.log10(hdu.data),vmin=-2.0,alpha=0.4)
+        im1 = ax2.scatter(xpix,ypix,c=np.log10(masses),alpha=0.5,cmap=cmap)
+        cbar = fig.colorbar(im1,ax = ax2,use_gridspec=False,
+                            orientation='vertical',pad=0.00,aspect=30)
+        cbar.ax.set_ylabel(r"$\log_{10} \, \mathrm{Mass} \, (M_{\odot})$",rotation=90,labelpad=5,fontsize=20)
+        dec = ax2.coords['DEC']
+        dec.set_ticklabel_visible(False)
+        ax2.set_xlabel(r"$\mathrm{Right \; Ascension \; (J2000)}$",fontsize=16)
+
+        #Set axis limits to these limits
+        ax2.set_xlim(imin-500,imax+500)
+        ax2.set_ylim(jmin-500,jmax+500)
+        scale = self.scale_to_plot(0.1,0.1,ax2)
+        ax2.add_line(scale)
+        ax2.annotate(r'$1 \, \mathrm{kpc}$',(0.1,0.05),xycoords='axes fraction',
+                    fontsize=12)    
 
 
         if(save):
