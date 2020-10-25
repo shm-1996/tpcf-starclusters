@@ -1,5 +1,6 @@
 from header import *
 from TPCF import *
+from Galaxy import Galaxy
 from sklearn.neighbors import KDTree
 
 class myPlot():
@@ -512,10 +513,10 @@ class myPlot():
 
         #Plot scatter
         
-        im1 = ax1.scatter(xpix,ypix,c=np.log10(ages),alpha=0.5,cmap=cmap)
+        im1 = ax1.scatter(xpix,ypix,c=np.log10(ages),alpha=0.5,cmap=cmap,lw=0.5)
         cbar = fig.colorbar(im1,ax = ax1,use_gridspec=False,
                             orientation='vertical',pad=0.00,aspect=30)
-        cbar.ax.set_ylabel(r"$\log_{10} \, \mathrm{Age}$",rotation=90,labelpad=5,fontsize=20)
+        cbar.ax.set_ylabel(r"$\log_{10} \, \mathrm{Age} \, (\mathrm{yr})$",rotation=90,labelpad=5,fontsize=20)
         ax1.set_xlabel(r"$\mathrm{Right \; Ascension \; (J2000)}$",fontsize=16)
         ax1.set_ylabel(r"$\mathrm{Declination \; (J2000)}$",labelpad=-1.2,
                        fontsize=16)
@@ -540,7 +541,7 @@ class myPlot():
 
         with np.errstate(divide='ignore', invalid='ignore'):
             im = ax2.imshow(np.log10(hdu.data),vmin=-2.0,alpha=0.4)
-        im1 = ax2.scatter(xpix,ypix,c=np.log10(masses),alpha=0.5,cmap=cmap)
+        im1 = ax2.scatter(xpix,ypix,c=np.log10(masses),alpha=0.5,cmap=cmap,lw=0.5)
         cbar = fig.colorbar(im1,ax = ax2,use_gridspec=False,
                             orientation='vertical',pad=0.00,aspect=30)
         cbar.ax.set_ylabel(r"$\log_{10} \, \mathrm{Mass} \, (M_{\odot})$",rotation=90,labelpad=5,fontsize=20)
@@ -564,6 +565,111 @@ class myPlot():
             plt.close()
         else :
             plt.show()
+
+
+    def identify_breaks(self,save=False,filename=None,random_method='masked'):
+        fig = plt.figure(tight_layout=False,figsize=(18,6))
+
+        hdu = fits.open(self.galaxy.fits_file)[0]
+
+        ages = self.galaxy.get_cluster_ages()
+        cmap = cmr.waterlily
+        #Convert ra/dec to pixel coordinates
+        wcs_galaxy = WCS(hdu.header)
+        xpix,ypix = wcs_galaxy.all_world2pix(self.galaxy.ra_raw,self.galaxy.dec_raw,0)
+
+        ################################################################
+        ax1 = fig.add_subplot(131,projection=wcs_galaxy)
+        im1 = ax1.scatter(xpix,ypix,c=np.log10(ages),alpha=0.5,cmap=cmap)
+        cbar = fig.colorbar(im1,ax = ax1,use_gridspec=False,
+                            orientation='vertical',pad=0.00,aspect=30)
+        cbar.ax.set_ylabel(r"$\log_{10} \, \mathrm{Age} \, (\mathrm{yr})$",rotation=90,labelpad=5,fontsize=20)
+        ax1.set_xlabel(r"$\mathrm{Right \; Ascension \; (J2000)}$",fontsize=16)
+        ax1.set_ylabel(r"$\mathrm{Declination \; (J2000)}$",labelpad=-1.2,
+                       fontsize=16)
+        scale = self.scale_to_plot(0.1,0.1,ax1)
+        ax1.add_line(scale)
+        ax1.annotate(r'$1 \, \mathrm{kpc}$',(0.1,0.05),xycoords='axes fraction',
+                    fontsize=12)
+
+        ################################################################
+        ax2 = fig.add_subplot(132)
+        ax_sec = ax2.secondary_xaxis("top",functions=(self.sep_to_pc,self.pc_to_sep))
+        separation_bins = self.galaxy.bin_centres*(1./arcsec_to_degree)
+
+        ax2.errorbar(separation_bins,self.galaxy.corr,yerr=self.galaxy.dcorr,
+            fmt='.-')
+        plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
+        ax2.plot(plot_points,np.exp(linear_function(plot_points,self.galaxy.fit_values[0],
+                    self.galaxy.fit_values[1],self.galaxy.fit_values[2],self.galaxy.fit_values[3])),
+                    ls='--',label='fit')
+        break_theta = np.exp(self.galaxy.fit_values[3])
+        break_theta_error = np.exp(self.galaxy.fit_errors[3])
+
+        ax2.plot(separation_bins,self.galaxy.corr,lw=0.0,
+            label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[1],self.galaxy.fit_errors[1]))
+            
+        ax2.plot(separation_bins,self.galaxy.corr,lw=0.0,
+                label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[2],self.galaxy.fit_errors[2]))
+        ax2.axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
+                break_theta_error))
+
+        ax2.set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
+        ax2.set_ylabel(r"$\omega_{\mathrm{LS}}\left(\theta \right)$",labelpad=-5.0)
+        ax2.set_xscale('log')
+        ax2.set_yscale('log')
+        ax2.callbacks.connect("xlim_changed", self.axs_to_parsec)
+        ax2.legend()
+        ax_sec.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
+
+        ################################################################
+
+        ax3 = fig.add_subplot(133)
+        ax_sec = ax3.secondary_xaxis("top",functions=(self.sep_to_pc,self.pc_to_sep))
+        separation_bins = self.galaxy.bin_centres*(1./arcsec_to_degree)
+
+        #Compute TPCF for each age bin
+        galaxy_class = Galaxy(galaxy_name=self.galaxy.name,verbose=False) 
+        
+        #Clusters < 10Myr
+        galaxy_class.ra = self.galaxy.ra[np.where(ages <= 1.e7)]
+        galaxy_class.dec = self.galaxy.dec[np.where(ages <= 1.e7)] 
+
+        corr,dcorr,bootstraps = bootstrap_two_point_angular(galaxy_class,
+                        method='landy-szalay',Nbootstraps=100,
+                        random_method=random_method)
+        ax3.errorbar(separation_bins,corr,yerr=dcorr,
+            fmt='.-',label=r'$t \leq 10 \, \mathrm{Myr} $')
+        
+        #Clusters > 40Myr
+        galaxy_class.ra = self.galaxy.ra[np.where(ages > 1.e7)]
+        galaxy_class.dec = self.galaxy.dec[np.where(ages > 1.e7)] 
+
+        corr,dcorr,bootstraps = bootstrap_two_point_angular(galaxy_class,
+                        method='landy-szalay',Nbootstraps=100,
+                        random_method=random_method)
+        ax3.errorbar(separation_bins,corr,yerr=dcorr,
+            fmt='.-',label=r'$t > 10 \, \mathrm{Myr} $')
+        
+
+        ax3.set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
+        ax3.set_xscale('log')
+        ax3.set_yscale('log')
+        ax3.callbacks.connect("xlim_changed", self.axs_to_parsec)
+        ax3.legend()
+        ax_sec.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
+
+        if(save):
+            if(filename == None) :
+                filename = self.galaxy.outdir+'/{}_identifyBreak'.format(self.galaxy.name)
+            plt.savefig(filename,bbox_inches='tight')
+            plt.close()
+        else :
+            plt.show()
+
+
+
+
 
     def scale_to_plot(self,xcen,ycen,axs,length=1.e3) :
         """
