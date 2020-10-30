@@ -644,12 +644,23 @@ class Galaxy(object):
             print("Correcting for inclination of galaxy. This galaxy has PA = {}"
                 .format(self.pa) + " and inclination = {}".format(self.inclination))
 
-        self.ra_raw = self.ra
-        self.dec_raw = self.dec
+
+        hdu = fits.open(self.fits_file)[0]
+        wcs = WCS(hdu.header)
+
+        #Convert RA/DEC to appropriate pixels in the WCS 
+        xpix,ypix = wcs.all_world2pix(self.ra_raw,self.dec_raw,0)
+
         # See Eq 1 Grasha et al 2017
-        ra_dep = self.ra*np.cos(self.pa) - self.dec*np.sin(self.pa)
-        dec_dep = self.ra*np.sin(self.pa) + self.dec*np.cos(self.pa)
-        ra_dep = ra_dep/(np.cos(self.inclination))
+        #Basically rotating all points by PA in clockwise direction to align major axis with north. 
+        ra_dep = xpix*np.cos(np.deg2rad(self.pa)) + ypix*np.sin(np.deg2rad(self.pa))
+        dec_dep = -1.*xpix*np.sin(np.deg2rad(self.pa)) + ypix*np.cos(np.deg2rad(self.pa))
+
+        #Correct for inclination : separation only along minor axis changes
+        ra_dep = ra_dep/(np.cos(np.deg2rad(self.inclination)))
+
+        #Convert from pixel back to RA/DEC
+        ra_dep,dec_dep = wcs.all_pix2world(ra_dep,dec_dep,0)
 
         self.ra = ra_dep 
         self.dec = dec_dep
@@ -846,7 +857,11 @@ class Galaxy(object):
         galaxy_r25 = galaxy_r25 * self.distance*const.Parsec*1.e6
         #Convert from degrees to arcsec
 
-        self.r25 = galaxy_r25
+        # Store in kpc
+        self.r25 = galaxy_r25/(const.Parsec*1.e3)
+
+        # Store in Msun per year per pc^2
+        self.sigma_sfr = self.sfr/(np.pi * self.r25**2) * 1.e6
 
 
     # def read_summary(self,filename=None,method='masked_radial'):
