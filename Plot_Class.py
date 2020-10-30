@@ -513,7 +513,7 @@ class myPlot():
 
         #Plot scatter
         
-        im1 = ax1.scatter(xpix,ypix,c=np.log10(ages),alpha=0.5,cmap=cmap,lw=0.5)
+        im1 = ax1.scatter(xpix,ypix,c=np.log10(ages),alpha=0.6,cmap=cmap,lw=0.3)
         cbar = fig.colorbar(im1,ax = ax1,use_gridspec=False,
                             orientation='vertical',pad=0.00,aspect=30)
         cbar.ax.set_ylabel(r"$\log_{10} \, \mathrm{Age} \, (\mathrm{yr})$",rotation=90,labelpad=5,fontsize=20)
@@ -541,7 +541,7 @@ class myPlot():
 
         with np.errstate(divide='ignore', invalid='ignore'):
             im = ax2.imshow(np.log10(hdu.data),vmin=-2.0,alpha=0.4)
-        im1 = ax2.scatter(xpix,ypix,c=np.log10(masses),alpha=0.5,cmap=cmap,lw=0.5)
+        im1 = ax2.scatter(xpix,ypix,c=np.log10(masses),alpha=0.6,cmap=cmap,lw=0.3)
         cbar = fig.colorbar(im1,ax = ax2,use_gridspec=False,
                             orientation='vertical',pad=0.00,aspect=30)
         cbar.ax.set_ylabel(r"$\log_{10} \, \mathrm{Mass} \, (M_{\odot})$",rotation=90,labelpad=5,fontsize=20)
@@ -574,24 +574,57 @@ class myPlot():
 
         ages = self.galaxy.get_cluster_ages()
         cmap = cmr.waterlily
-        #Convert ra/dec to pixel coordinates
-        wcs_galaxy = WCS(hdu.header)
-        xpix,ypix = wcs_galaxy.all_world2pix(self.galaxy.ra_raw,self.galaxy.dec_raw,0)
+    
 
         ################################################################
-        ax1 = fig.add_subplot(131,projection=wcs_galaxy)
-        im1 = ax1.scatter(xpix,ypix,c=np.log10(ages),alpha=0.5,cmap=cmap)
+        ax1 = fig.add_subplot(131)
+
+        x = self.galaxy.ra*3600.0
+        y = self.galaxy.dec*3600.0
+
+        #Get central pixel values
+        xcen = (np.min(x)+np.max(x))/2.
+        ycen = (np.min(y)+np.max(y))/2.
+
+        #Scale offset around bounding box to ~ 5% of axes width
+        offset_x = (np.max(x)-np.min(x))*0.05
+        offset_y = (np.max(y)-np.min(y))*0.05
+
+        xmin,xmax = np.min(x)-offset_x-xcen, np.max(x)+offset_x-xcen
+        ymin,ymax = np.min(y)-offset_y-ycen, np.max(y)+offset_y-ycen
+        ax1.set_xlim(xmin,xmax)
+        ax1.set_ylim(ymin,ymax)
+
+        im1 = ax1.scatter(x-xcen,y-ycen,c=np.log10(ages),alpha=0.5,cmap=cmap)
         cbar = fig.colorbar(im1,ax = ax1,use_gridspec=False,
                             orientation='vertical',pad=0.00,aspect=30)
         cbar.ax.set_ylabel(r"$\log_{10} \, \mathrm{Age} \, (\mathrm{yr})$",rotation=90,labelpad=5,fontsize=20)
-        ax1.set_xlabel(r"$\mathrm{Right \; Ascension \; (J2000)}$",fontsize=16)
-        ax1.set_ylabel(r"$\mathrm{Declination \; (J2000)}$",labelpad=-1.2,
-                       fontsize=16)
-        scale = self.scale_to_plot(0.1,0.1,ax1)
-        ax1.add_line(scale)
-        ax1.annotate(r'$1 \, \mathrm{kpc}$',(0.1,0.05),xycoords='axes fraction',
-                    fontsize=12)
+        ax1.set_xlabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
+        ax1.set_ylabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
 
+        # #Draw 100 arcsec scale bar
+        import matplotlib.lines as lines
+        #No of pixels in axes
+        total_pixels = np.int(np.floor(ax1.transData.transform((xmax,ymax))[0]) - \
+        np.floor(ax1.transData.transform((xmin,ymin))[0]))
+
+        length_per_pixel = (xmax-xmin)/(total_pixels)
+        #Convert to parsec 
+        length_per_pixel = self.sep_to_pc(length_per_pixel)
+        #Scale bar of 50 arcsec
+        length = self.sep_to_pc(50)
+        no_pixels = np.abs(length/length_per_pixel)
+        no_pixels = no_pixels/total_pixels
+
+        scale = lines.Line2D([0.8,0.8+no_pixels],[0.1],
+                                         lw=1,color='black',
+                                        transform=ax1.transAxes)
+
+        ax1.add_line(scale)
+        ax1.annotate(r'$50^{\prime \prime} = %d \, \mathrm{kpc}$'%length,(0.65,0.15),xycoords='axes fraction',
+                            fontsize=12)
+        
+        
         ################################################################
         ax2 = fig.add_subplot(132)
         ax_sec = ax2.secondary_xaxis("top",functions=(self.sep_to_pc,self.pc_to_sep))
