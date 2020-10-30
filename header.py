@@ -16,7 +16,6 @@ import subprocess
 #Astropy Data Handling
 from spectral_cube import SpectralCube
 from astropy import units as u
-import aplpy
 from astropy.utils.data import get_pkg_data_filename
 from astropy.io import fits
 from astropy.wcs import WCS
