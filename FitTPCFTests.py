@@ -3,60 +3,26 @@ from Galaxy import *
 from Plot_Class import *
 from MCMCfit import *
 
-def fit_galaxy(galaxy_name,method='masked_radial',function='piecewise'):
-    galaxy_class = Galaxy(galaxy_name,verbose=False)
-    #Save in subdirectories for below two methods
-    if(method == 'masked'):
-        galaxy_class.outdir += '/Masked/'
-    elif(method == 'uniform'):
-        galaxy_class.outdir += '/Uniform/'
-    elif(method == 'masked_radial'):
-        galaxy_class.outdir += '/Masked_Radial/'
-    else:
-        raise myError("Method not recognised.")
-
-    galaxy_class = loadObj(galaxy_class.outdir+
-            '{}_summary'.format(galaxy_class.name))
-    if(function == 'piecewise'):
-        fit_MCMC(galaxy_class,save=True)
-    else :
-        print("Fitting Single PL fit in MCMC.")
-        fit_SinglePLMCMC(galaxy_class,save=True)
-
-
-if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description=
-        'Command Line Inputs for tpcf-starclusters. All inputs optional. ')
-    ap.add_argument('-method',action='store',type=str,default='masked_radial',
-        help='Method to prepare the random catalog: "Uniform","Masked"' +
-        '" Masked_radial (default)" ')
-    ap.add_argument('-galaxy',action='store',type=str,default=None,
-        help = 'Galaxy for which tpcf to be computed. By default done for all.')
-    ap.add_argument('-function',action='store',type=str,default='piecewise',
-        help='Function to use to fit.')
-
-    args = vars(ap.parse_args())
-    if(args['function'] not in ['piecewise','singlepl']):
-        raise ValueError("Wrong function type.")
-
-    method = args['method'].lower()
-    if(method not in ['uniform','masked','masked_radial']):
-        raise ValueError("This method does not exist. Allowed values are "+
-            "'Uniform', 'Masked', and 'Masked_Radial'.")
-
-    galaxy_input = args['galaxy'].upper()
-    if(galaxy_input == 'ALL'):
-
-        for galaxy_name in list_of_galaxies:
-
-            print("Performing MCMC for galaxy {}".format(galaxy_name))
-            fit_galaxy(galaxy_name,method=method,function=args['function'])
-
-    else :
-        fit_galaxy(galaxy_input,method=method,function=args['function'])
-
 
 def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_radial'):
+    """
+    Read MCMC samplers and plot the TPCF with best fit power law for all galaxies. 
+
+    Parameters: 
+        save: 
+        Flag to save the plot
+        outdir: 
+            Output directory in which to store plot. Default is results directory.
+        indir :
+            Input directory from which to read the results. Default is results directory.
+        method : 
+            Method for which TPCF's have been computed.
+    Returns:
+        None
+
+
+    """
+
     #Create figure and axs instance
     fig,axs = plt.subplots(nrows=3,ncols=4,figsize=(16,12))
 
@@ -162,7 +128,7 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
 def Test_CombinedFit(save=False,outdir='../Results/',indir=None,method='masked_radial',
     function='piecewise'):
     """
-    Plot the TPCF of all galaxies as a combined figure.
+    Plot the TPCF of all galaxies along with fitting as a combined figure.
 
     Parameters:
         save: 
@@ -303,3 +269,37 @@ def Test_CombinedFit(save=False,outdir='../Results/',indir=None,method='masked_r
         plt.close()
     else :
         plt.show()
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description=
+        'Command Line Inputs for tpcf-starclusters. All inputs optional. ')
+    ap.add_argument('-method',action='store',type=str,default='masked_radial',
+        help='Method to prepare the random catalog: "Uniform","Masked"' +
+        '" Masked_radial (default)" ')
+    ap.add_argument('-galaxy',action='store',type=str,default=None,
+        help = 'Galaxy for which tpcf to be computed. By default done for all.')
+    ap.add_argument('-function',action='store',type=str,default='piecewise',
+        help='Function to use to fit.')
+
+    args = vars(ap.parse_args())
+    if(args['function'] not in ['piecewise','singlepl']):
+        raise ValueError("Wrong function type.")
+
+    method = args['method'].lower()
+    if(method not in ['uniform','masked','masked_radial']):
+        raise ValueError("This method does not exist. Allowed values are "+
+            "'Uniform', 'Masked', and 'Masked_Radial'.")
+
+    galaxy_input = args['galaxy'].upper()
+    if(galaxy_input == 'ALL'):
+
+        for galaxy_name in list_of_galaxies:
+
+            print("Performing MCMC for galaxy {}".format(galaxy_name))
+            fit_MCMC_galaxy(galaxy_name,method=method,function=args['function'])
+
+    else :
+        fit_MCMC_galaxy(galaxy_input,method=method,function=args['function'])
+
+

@@ -79,6 +79,39 @@ def lnlike_singlepower(params,bins,data,data_error):
 ################################################################################################
 #Fitting routines
 
+def fit_MCMC_galaxy(galaxy_name,method='masked_radial',function='piecewise'):
+    """
+    Fit an MCMC to a galaxy with given name. 
+    Parameters: 
+        galaxy_name : str 
+            Name of galaxy for which to fit
+        method : str
+            Method of Random distribution
+        function: str 
+            Piecewise or single PL fits to the TPCF
+
+
+    """
+    galaxy_name = galaxy_name.upper()
+    galaxy_class = Galaxy(galaxy_name,verbose=False)
+    #Save in subdirectories for below two methods
+    if(method == 'masked'):
+        galaxy_class.outdir += '/Masked/'
+    elif(method == 'uniform'):
+        galaxy_class.outdir += '/Uniform/'
+    elif(method == 'masked_radial'):
+        galaxy_class.outdir += '/Masked_Radial/'
+    else:
+        raise myError("Method not recognised.")
+
+    galaxy_class = loadObj(galaxy_class.outdir+
+            '{}_summary'.format(galaxy_class.name))
+    if(function == 'piecewise'):
+        fit_MCMC(galaxy_class,save=True)
+    else :
+        print("Fitting Single PL fit in MCMC.")
+        fit_SinglePLMCMC(galaxy_class,save=True)
+
 def fit_MCMC(galaxy_class,save=False):
     """
     Fit an MCMC to the TPCF of a galaxy and create diagnostic plots after. 
