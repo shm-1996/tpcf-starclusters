@@ -157,13 +157,19 @@ def masked_radial_random_sample(galaxy,len_random=100) :
     ra_accepted = ra_rand[accepted_indices]
     dec_accepted = dec_rand[accepted_indices]
 
+    hdu = fits.open(galaxy.fits_file)[0]
+    wcs = WCS(hdu.header)
+    xpix,ypix = wcs.all_world2pix(ra_accepted,dec_accepted,0)
+
     # Deproject random sample
     if(galaxy.deproject_galaxy == True):
-        ra_random = ra_accepted*np.cos(galaxy.pa) - dec_accepted*np.sin(galaxy.pa)
-        dec_random = ra_accepted*np.sin(galaxy.pa) + dec_accepted*np.cos(galaxy.pa)
-        ra_random = ra_random/(np.cos(galaxy.inclination))
+        ra_random = xpix*np.cos(np.deg2rad(galaxy.pa)) + ypix*np.sin(np.deg2rad(galaxy.pa))
+        dec_random = -xpix*np.sin(np.deg2rad(galaxy.pa)) + ypix*np.cos(np.deg2rad(galaxy.pa))
+        ra_random = ra_random/(np.cos(np.deg2rad(galaxy.inclination)))
     else : 
         ra_random, dec_random = ra_accepted, dec_accepted
+
+    ra_random,dec_random = wcs.all_pix2world(ra_random,dec_random,0)
 
     return ra_random,dec_random
 
@@ -220,18 +226,19 @@ def masked_random_sample(galaxy,len_random=100):
     # Check whether point lies in the masked region
     # mask_xy = region[0].contains(regions.PixCoord(random_x,random_y))
     random_xy_masked = random_xy[mask_xy]
-    
-    ra_dec_masked = wcs.wcs_pix2world(random_xy_masked,0)
-    ra_masked,dec_masked = ra_dec_masked[:,0], ra_dec_masked[:,1]
+
+    #ra_dec_masked = wcs.wcs_pix2world(random_xy_masked,0)
+    ra_masked,dec_masked = random_xy_masked[:,0], random_xy_masked[:,1]
 
     # Deproject random sample
     if(galaxy.deproject_galaxy == True):
-        ra_random = ra_masked*np.cos(galaxy.pa) - dec_masked*np.sin(galaxy.pa)
-        dec_random = ra_masked*np.sin(galaxy.pa) + dec_masked*np.cos(galaxy.pa)
-        ra_random = ra_random/(np.cos(galaxy.inclination))
+        ra_random = ra_masked*np.cos(np.deg2rad(galaxy.pa)) + dec_masked*np.sin(np.deg2rad(galaxy.pa))
+        dec_random = -ra_masked*np.sin(np.deg2rad(galaxy.pa)) + dec_masked*np.cos(np.deg2rad(galaxy.pa))
+        ra_random = ra_random/(np.cos(np.deg2rad(galaxy.inclination)))
     else : 
         ra_random, dec_random = ra_masked, dec_masked
 
+    ra_random,dec_random = wcs.all_pix2world(ra_random,dec_random,0)
 
     return ra_random, dec_random
 
