@@ -66,3 +66,30 @@ def loadObj(name):
 
     with open(name + '.pkl', 'rb') as f:
         return pickle.load(f)
+
+
+def load_galaxy(galaxy_name,method='masked',directory=None):
+    """
+    Load a galaxy pickle object. 
+    """
+    if(method not in ['uniform','masked','masked_radial']):
+        raise ValueError("This method does not exist. Allowed values are "+
+            "'Uniform', 'Masked', and 'Masked_Radial'.")
+    galaxy_name = galaxy_name.upper()
+    method = method.lower()
+    if(directory is None):
+        directory = os.path.abspath('../Results/Galaxies/{}'.format(galaxy_name))
+    
+    if(method == 'masked'):
+        galaxy_class = loadObj(directory+
+                       '/Masked/{}_summary'.format(galaxy_name))
+
+    elif(method == 'masked_radial'):
+        galaxy_class = loadObj(directory+
+                       '/Masked_Radial/{}_summary'.format(galaxy_name))
+
+    else: 
+        galaxy_class = loadObj(directory+
+                       '/Uniform/{}_summary'.format(galaxy_name))
+
+    return galaxy_class
