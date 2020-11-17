@@ -31,23 +31,38 @@ class myPlot():
         fig,axs = plt.subplots(ncols=1)
         ax2 = axs.secondary_xaxis("top",functions=(self.sep_to_pc,self.pc_to_sep))
         separation_bins = self.galaxy.bin_centres*(1./arcsec_to_degree)
+        plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
+
+        indices = np.where(self.galaxy.corr>0.0)
+        corr_fit = self.galaxy.corr[indices].astype(np.float)
+        dcorr_fit = self.galaxy.dcorr[indices].astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
 
         if(function not in ['piecewise','smooth','singlepl']):
             raise ValueError("This funtional form does not exist.")
+
         
         #Try plotting directly if TPCF computed. Else compute.
-        try:
-            axs.errorbar(separation_bins,self.galaxy.corr,yerr=self.galaxy.dcorr,
+        try:        
+            
+    
+            axs.errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
             fmt='.-')
         except AttributeError:
             print("TPCF not computed computing first.")
             self.galaxy.Compute_TPCF()
-            axs.errorbar(separation_bins,self.galaxy.corr,yerr=self.galaxy.dcorr,
+            separation_bins = self.galaxy.bin_centres*(1./arcsec_to_degree)
+
+            indices = np.where(self.galaxy.corr>0.0)
+            corr_fit = self.galaxy.corr[indices].astype(np.float)
+            dcorr_fit = self.galaxy.dcorr[indices].astype(np.float)
+            separation_bins = separation_bins[indices].astype(np.float)
+            axs.errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
             fmt='.-')
 
         try:
             
-            plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
+            
             if(function == 'piecewise'):
                 axs.plot(plot_points,np.exp(linear_function(plot_points,self.galaxy.fit_values[0],
                     self.galaxy.fit_values[1],self.galaxy.fit_values[2],self.galaxy.fit_values[3])),
@@ -67,11 +82,11 @@ class myPlot():
                     ls='--',label='fit')
 
                 
-            axs.plot(separation_bins,self.galaxy.corr,lw=0.0,
+            axs.plot(separation_bins,corr_fit,lw=0.0,
                 label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[1],self.galaxy.fit_errors[1]))
             
             if(function in ['piecewise','smooth']):
-                axs.plot(separation_bins,self.galaxy.corr,lw=0.0,
+                axs.plot(separation_bins,corr_fit,lw=0.0,
                     label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[2],self.galaxy.fit_errors[2]))
                 axs.axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
                     break_theta_error))
@@ -87,9 +102,9 @@ class myPlot():
             axs.plot(plot_points,np.exp(linear_function(plot_points,self.galaxy.fit_values[0],
                 self.galaxy.fit_values[1],self.galaxy.fit_values[2],self.galaxy.fit_values[3])),
                 ls='--',label='fit')
-            axs.plot(separation_bins,self.galaxy.corr,lw=0.0,
+            axs.plot(separation_bins,corr_fit,lw=0.0,
                 label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[1],self.galaxy.fit_errors[1]))
-            axs.plot(separation_bins,self.galaxy.corr,lw=0.0,
+            axs.plot(separation_bins,corr_fit,lw=0.0,
                 label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[2],self.galaxy.fit_errors[2]))
 
             axs.axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
@@ -138,8 +153,7 @@ class myPlot():
         #Initialise figure
         fig,axs = plt.subplots(ncols=1)
         ax2 = axs.secondary_xaxis("top",functions=(self.sep_to_pc,self.pc_to_sep))
-        separation_bins = self.galaxy.bin_centres
-        separation_bins*=(1./arcsec_to_degree)
+        
 
         #Compute TPCF for each class
         for i in range(1,4):
@@ -147,7 +161,12 @@ class myPlot():
                 print("Computing TPCF for class {} clusters".format(i))
             self.galaxy.Compute_TPCF(cluster_class=i,random_method=random_method,
                 verbose=verbose)
-            axs.errorbar(separation_bins,self.galaxy.corr,yerr=self.galaxy.dcorr,
+            separation_bins = self.galaxy.bin_centres*(1./arcsec_to_degree)        
+            indices = np.where(self.galaxy.corr>0.0)
+            corr_fit = self.galaxy.corr[indices].astype(np.float)
+            dcorr_fit = self.galaxy.dcorr[indices].astype(np.float)
+            separation_bins = separation_bins[indices].astype(np.float)
+            axs.errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
                 fmt='.-',label='Class {}'.format(i))
         # Combined
         if(verbose):
@@ -156,7 +175,12 @@ class myPlot():
         #TODO: Figure out how to do this. Currently the properties for 
         self.galaxy.Compute_TPCF(cluster_class=-1,random_method=random_method,
             verbose=verbose)
-        axs.errorbar(separation_bins,self.galaxy.corr,yerr=self.galaxy.dcorr,
+        separation_bins = self.galaxy.bin_centres*(1./arcsec_to_degree)
+        indices = np.where(self.galaxy.corr>0.0)
+        corr_fit = self.galaxy.corr[indices].astype(np.float)
+        dcorr_fit = self.galaxy.dcorr[indices].astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
+        axs.errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
             fmt='.-',label='Class 1+2+3')
 
 
@@ -199,12 +223,56 @@ class myPlot():
         hdu = fits.open(self.galaxy.fits_file)[0]
         wcs = WCS(hdu.header)
 
+        ages = self.galaxy.get_cluster_ages()
+        cmap = cmr.waterlily
+
         fig = plt.figure()
-        ax1 = fig.add_subplot(111,projection=wcs)
-        im = ax1.scatter(self.galaxy.ra,self.galaxy.dec)
-        ax1.set_xlabel(r"$\mathrm{Right \; Ascension \; (J2000)}$",fontsize=20)
-        ax1.set_ylabel(r"$\mathrm{Declination \; (J2000)}$",labelpad=-0.8,
-                       fontsize=20)
+        ax1 = fig.add_subplot(111)
+
+        x = self.galaxy.ra*3600.0
+        y = self.galaxy.dec*3600.0
+
+        #Get central pixel values
+        xcen = (np.min(x)+np.max(x))/2.
+        ycen = (np.min(y)+np.max(y))/2.
+
+        #Scale offset around bounding box to ~ 5% of axes width
+        offset_x = (np.max(x)-np.min(x))*0.05
+        offset_y = (np.max(y)-np.min(y))*0.05
+
+        xmin,xmax = np.min(x)-offset_x-xcen, np.max(x)+offset_x-xcen
+        ymin,ymax = np.min(y)-offset_y-ycen, np.max(y)+offset_y-ycen
+        ax1.set_xlim(xmin,xmax)
+        ax1.set_ylim(ymin,ymax)
+
+        im1 = ax1.scatter(x-xcen,y-ycen,c=np.log10(ages),alpha=0.5,cmap=cmap)
+        cbar = fig.colorbar(im1,ax = ax1,use_gridspec=False,
+                            orientation='vertical',pad=0.00,aspect=30)
+
+        # #Draw 100 arcsec scale bar
+        import matplotlib.lines as lines
+        #No of pixels in axes
+        total_pixels = np.int(np.floor(ax1.transData.transform((xmax,ymax))[0]) - \
+        np.floor(ax1.transData.transform((xmin,ymin))[0]))
+
+        length_per_pixel = (xmax-xmin)/(total_pixels)
+        #Convert to parsec 
+        length_per_pixel = self.sep_to_pc(length_per_pixel)
+        #Scale bar of 50 arcsec
+        length = self.sep_to_pc(50)
+        no_pixels = np.abs(length/length_per_pixel)
+        no_pixels = no_pixels/total_pixels
+
+        scale = lines.Line2D([0.8,0.8+no_pixels],[0.1],
+                                         lw=1,color='black',
+                                        transform=ax1.transAxes)
+
+        ax1.add_line(scale)
+        ax1.annotate(r'$50^{\prime \prime} = %d \, \mathrm{pc}$'%length,(0.65,0.15),xycoords='axes fraction',
+                            fontsize=12)
+
+        ax1.set_xlabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
+        ax1.set_ylabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
         if(save):
             if(filename == None):
                 filename = self.galaxy.outdir+'/{}_clusters'.format(self.galaxy.name)
@@ -246,12 +314,30 @@ class myPlot():
 
         hdu = fits.open(self.galaxy.fits_file)[0]
         wcs = WCS(hdu.header)
+
         fig = plt.figure(constrained_layout=True)
-        ax1 = fig.add_subplot(111,projection=wcs)
-        im = ax1.scatter(ra_R,dec_R)
-        ax1.set_xlabel(r"$\mathrm{Right \; Ascension \; (J2000)}$",fontsize=20)
-        ax1.set_ylabel(r"$\mathrm{Declination \; (J2000)}$",labelpad=-0.8,
-                       fontsize=20)
+        ax1 = fig.add_subplot(111)
+
+        x = ra_R*3600.0
+        y = dec_R*3600.0
+
+        #Get central pixel values
+        xcen = (np.min(x)+np.max(x))/2.
+        ycen = (np.min(y)+np.max(y))/2.
+
+        #Scale offset around bounding box to ~ 5% of axes width
+        offset_x = (np.max(x)-np.min(x))*0.05
+        offset_y = (np.max(y)-np.min(y))*0.05
+
+        xmin,xmax = np.min(x)-offset_x-xcen, np.max(x)+offset_x-xcen
+        ymin,ymax = np.min(y)-offset_y-ycen, np.max(y)+offset_y-ycen
+        ax1.set_xlim(xmin,xmax)
+        ax1.set_ylim(ymin,ymax)
+
+        im1 = ax1.scatter(x-xcen,y-ycen)
+
+        ax1.set_xlabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
+        ax1.set_ylabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
         if(save):
             if(filename == None) :
                 filename = self.galaxy.outdir+'/{}_random'.format(self.galaxy.name) + \
@@ -629,20 +715,26 @@ class myPlot():
         ax2 = fig.add_subplot(132)
         ax_sec = ax2.secondary_xaxis("top",functions=(self.sep_to_pc,self.pc_to_sep))
         separation_bins = self.galaxy.bin_centres*(1./arcsec_to_degree)
-
-        ax2.errorbar(separation_bins,self.galaxy.corr,yerr=self.galaxy.dcorr,
-            fmt='.-')
         plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
+
+        indices = np.where(self.galaxy.corr>0.0)
+        corr_fit = self.galaxy.corr[indices].astype(np.float)
+        dcorr_fit = self.galaxy.dcorr[indices].astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
+
+        ax2.errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
+            fmt='.-')
+        
         ax2.plot(plot_points,np.exp(linear_function(plot_points,self.galaxy.fit_values[0],
                     self.galaxy.fit_values[1],self.galaxy.fit_values[2],self.galaxy.fit_values[3])),
                     ls='--',label='fit')
         break_theta = np.exp(self.galaxy.fit_values[3])
         break_theta_error = np.exp(self.galaxy.fit_errors[3])
 
-        ax2.plot(separation_bins,self.galaxy.corr,lw=0.0,
+        ax2.plot(separation_bins,corr_fit,lw=0.0,
             label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[1],self.galaxy.fit_errors[1]))
             
-        ax2.plot(separation_bins,self.galaxy.corr,lw=0.0,
+        ax2.plot(separation_bins,corr_fit,lw=0.0,
                 label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[2],self.galaxy.fit_errors[2]))
         ax2.axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
                 break_theta_error))
