@@ -146,7 +146,10 @@ def fit_MCMC(galaxy_class,save=False):
     distance = galaxy_class.distance*const.Parsec*1.e6
     sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, 
                                     args=(separation_bins,np.log(corr_fit),
-                                         np.log(dcorr_fit),distance))    
+                                         dcorr_fit/corr_fit,distance))    
+
+    if(not os.path.exists(galaxy_class.outdir+'/PiecePL_MCMC')):
+        os.makedirs(galaxy_class.outdir+'/PiecePL_MCMC')
 
     print("Running burn-in...")
     p0, _, _ = sampler.run_mcmc(p0, 100)
@@ -163,7 +166,7 @@ def fit_MCMC(galaxy_class,save=False):
     fig = corner.corner(samples,show_titles=True,labels=labels,
         plot_datapoints=True,quantiles=[0.16, 0.5, 0.84])
     if(save):
-        fig.savefig(galaxy_class.outdir+'MCMC_Posterior_Dist.pdf',bbox_inches='tight')
+        fig.savefig(galaxy_class.outdir+'/PiecePL_MCMC/MCMC_Posterior_Dist.pdf',bbox_inches='tight')
         plt.close()
     else:
         fig.show()
@@ -180,7 +183,7 @@ def fit_MCMC(galaxy_class,save=False):
 
     axes[-1].set_xlabel("step number")
     if(save):
-        fig.savefig(galaxy_class.outdir+'MCMC_Convergence.pdf',bbox_inches='tight')
+        fig.savefig(galaxy_class.outdir+'/PiecePL_MCMC/MCMC_Convergence.pdf',bbox_inches='tight')
         plt.close()
     else:
         fig.show()
@@ -210,7 +213,7 @@ def fit_MCMC(galaxy_class,save=False):
     ax2.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
 
     if(save):
-        plt.savefig(galaxy_class.outdir+'Sample_fits_MCMC')
+        plt.savefig(galaxy_class.outdir+'/PiecePL_MCMC/Sample_fits_MCMC')
         plt.close()
     else:
         plt.show()
@@ -218,8 +221,8 @@ def fit_MCMC(galaxy_class,save=False):
     galaxy_class.fit_values = samples[np.argmax(sampler.flatlnprobability)]
     galaxy_class.fit_errors = sampler.flatchain.std(axis=0)
     pl = myPlot(galaxy_class)
-    pl.plot_TPCF(save=save,filename=galaxy_class.outdir+'/TPCF_MCMC.pdf')
-    saveObj(sampler,galaxy_class.outdir+'/MCMC_sampler')
+    pl.plot_TPCF(save=save,filename=galaxy_class.outdir+'/PiecePL_MCMC//TPCF_MCMC.pdf')
+    saveObj(sampler,galaxy_class.outdir+'/PiecePL_MCMC//MCMC_sampler')
 
 
 def fit_SinglePLMCMC(galaxy_class,save=False):
@@ -250,7 +253,7 @@ def fit_SinglePLMCMC(galaxy_class,save=False):
     distance = galaxy_class.distance*const.Parsec*1.e6
     sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_singlepower, 
                                     args=(separation_bins,np.log(corr_fit),
-                                         np.log(dcorr_fit)))    
+                                         dcorr_fit/corr_fit))    
 
     if(not os.path.exists(galaxy_class.outdir+'/SinglePL_MCMC')):
         os.makedirs(galaxy_class.outdir+'/SinglePL_MCMC')
