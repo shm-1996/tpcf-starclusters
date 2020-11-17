@@ -63,50 +63,51 @@ def Combined_TPCF(save=False,outdir='../Results/',indir=None,method='masked_radi
 
         #Secondary axis
         separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
-        
-        try:
-            
-            axs[i,j].set_yscale('log')
-            axs[i,j].errorbar(separation_bins,galaxy_class.corr,yerr=galaxy_class.dcorr,
-                fmt='.-')
-            ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
-            
-            #Fit plot
-            break_theta = np.exp(galaxy_class.fit_values[3])
-            break_theta_error = np.exp(galaxy_class.fit_errors[3])
-            axs[i,j].plot(separation_bins,np.exp(linear_function(separation_bins,galaxy_class.fit_values[0],
-                galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3])),
-                ls='--',label='fit')
-            axs[i,j].plot(separation_bins,galaxy_class.corr,lw=0.0,
-                label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[1],galaxy_class.fit_errors[1]))
-            axs[i,j].plot(separation_bins,galaxy_class.corr,lw=0.0,
-                label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[2],galaxy_class.fit_errors[2]))
-            axs[i,j].axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
-                break_theta_error))
-
-            #Plot stuff
-            #X-labels only on bottom row
-            if(i==2):
-                axs[i,j].set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
-            #Y-labels only on left column
-            if(j == 0):
-                axs[i,j].set_ylabel(r"$\omega_{\mathrm{LS}}\left(\theta \right)$")
-            axs[i,j].set_xscale('log')
-            axs[i,j].callbacks.connect("xlim_changed", plot_class.axs_to_parsec)
-            axs[i,j].legend()
-
-            #Secondary axis label only for top row
-            if(i==0):
-                ax2.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
-
-            
-            axs[i,j].text(0.1,0.1,r'$\mathrm{NGC}$'+' '+r'${}$'.format(galaxy_name.split('_')[1]),
-                transform=axs[i,j].transAxes)
-
-        except:
-            print("Cannot plot TPCF") 
+        separation_bins = separation_bins.astype(np.float)
+        plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
 
         
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
+            
+        axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
+            fmt='.-')
+        ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
+        
+        #Fit plot
+        break_theta = np.exp(galaxy_class.fit_values[3])
+        break_theta_error = np.exp(galaxy_class.fit_errors[3])
+        axs[i,j].plot(plot_points,np.exp(linear_function(plot_points,galaxy_class.fit_values[0],
+            galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3])),
+            ls='--',label='fit')
+        axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+            label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[1],galaxy_class.fit_errors[1]))
+        axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+            label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[2],galaxy_class.fit_errors[2]))
+        axs[i,j].axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
+            break_theta_error))
+
+        #Plot stuff
+        #X-labels only on bottom row
+        if(i==2):
+            axs[i,j].set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
+        #Y-labels only on left column
+        if(j == 0):
+            axs[i,j].set_ylabel(r"$\omega_{\mathrm{LS}}\left(\theta \right)$")
+        axs[i,j].set_xscale('log')
+        axs[i,j].set_yscale('log')
+        axs[i,j].callbacks.connect("xlim_changed", plot_class.axs_to_parsec)
+        axs[i,j].legend()
+
+        #Secondary axis label only for top row
+        if(i==0):
+            ax2.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
+
+        
+        axs[i,j].text(0.1,0.1,r'$\mathrm{NGC}$'+' '+r'${}$'.format(galaxy_name.split('_')[1]),
+            transform=axs[i,j].transAxes)
 
         #Get position of subplot
         j +=1
@@ -116,7 +117,7 @@ def Combined_TPCF(save=False,outdir='../Results/',indir=None,method='masked_radi
 
 
     if(save):
-        filename = outdir+'Combined_TPCF_MaskedRadial.pdf'
+        filename = outdir+'Combined_TPCF_Masked.pdf'
         plt.savefig(filename,bbox_inches='tight')
         plt.close()
     else :
@@ -183,8 +184,9 @@ def Combined_TPCF_Ages(save=False,outdir='../Results/',indir=None,method='masked
         galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
         plot_class = myPlot(galaxy_class)
 
-        #Secondary axis
         separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+        separation_bins = separation_bins.astype(np.float)
+        plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
         
         ages = galaxy_class.get_cluster_ages()
         #Clusters < 10Myr
@@ -199,24 +201,29 @@ def Combined_TPCF_Ages(save=False,outdir='../Results/',indir=None,method='masked
         corr,dcorr,bootstraps = bootstrap_two_point_angular(galaxy_class,
                         method='landy-szalay',Nbootstraps=100,
                         random_method=method)
-        axs[i,j].errorbar(separation_bins,corr,yerr=dcorr,
-            fmt='.-')
+        
 
         galaxy_class.corr = corr 
         galaxy_class.dcorr = dcorr
 
         galaxy_class.fit_power_law(use_bounds=False)
+
+        #Isolate non-zero correlation points
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
         
         axs[i,j].set_yscale('log')            
         ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
         
-        #Fit to TPCF
-
+        axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
+            fmt='.-')
 
         #Fit plot
         break_theta = np.exp(galaxy_class.fit_values[3])
         break_theta_error = np.exp(galaxy_class.fit_errors[3])
-        axs[i,j].plot(separation_bins,np.exp(linear_function(separation_bins,galaxy_class.fit_values[0],
+        axs[i,j].plot(plot_points,np.exp(linear_function(plot_points,galaxy_class.fit_values[0],
             galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3])),
             ls='--',label='fit')
         axs[i,j].plot(separation_bins,galaxy_class.corr,lw=0.0,
@@ -330,8 +337,12 @@ def Combined_TPCF_allclass(save=False,outdir='../Results/',indir=None,method='ma
         
         color = ['#E13B58','#326EFA','#A5F597']
         for k in range(1,4):                
-            galaxy_class.Compute_TPCF(cluster_class=k,random_method=method)                    
-            axs[i,j].errorbar(separation_bins,galaxy_class.corr,yerr=galaxy_class.dcorr,
+            galaxy_class.Compute_TPCF(cluster_class=k,random_method=method)  
+            indices = np.where(galaxy_class.corr>0.0)
+            corr_fit = galaxy_class.corr[indices].astype(np.float)
+            dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+            separation_bins = separation_bins[indices].astype(np.float)                  
+            axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
                 fmt='.-',label='Class {}'.format(k),color=color[k-1])
 
         #Plot stuff
@@ -643,9 +654,9 @@ def Scatter_Correlations(save=False,outdir='../Results/',indir=None,method='mask
 
 if __name__ == "__main__":
     print("Preparing plots of paper.")
-    Combined_TPCF(save=True,method='masked_radial')
-    #Combined_TPCF_allclass(save=True,method='masked')
-    #Combined_TPCF_Ages(save=True,method='masked',age_group='young')
+    Combined_TPCF(save=True,method='masked')
+    # Combined_TPCF_allclass(save=True,method='masked')
+    # Combined_TPCF_Ages(save=True,method='masked',age_group='young')
     #Combined_TPCF_Ages(save=True,method='masked',age_group='old')
     #Combined_Clusters(save=True,method='masked')
     # Scatter_Correlations(save=True,method='masked')

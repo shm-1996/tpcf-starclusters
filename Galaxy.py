@@ -4,8 +4,8 @@ from TPCF import *
 import copy
 
 # Some defaults 
-default_bin_limits = 10,2000
-default_no_of_bins = 10
+default_bin_limits = 10,5000
+default_no_of_bins = 20
 
 class Galaxy(object):
     """
@@ -608,7 +608,7 @@ class Galaxy(object):
 
         else :
             if(set_no_bins is not None):
-                set_no_bins = int(set_no_bins)
+                no_bins = int(set_no_bins)
                 self.no_bins = no_bins
                 print("Changing number of bins to {}".format(set_no_bins))
             if(set_bin_limits is not None):
@@ -749,9 +749,10 @@ class Galaxy(object):
         separation_bins = (bins[1:]+bins[:-1])/2
         
         separation_bins = separation_bins.astype(np.float)
-        corr_fit = self.corr[np.where(self.corr>0.0)].astype(np.float)
-        dcorr_fit = self.dcorr[np.where(self.corr>0.0)].astype(np.float)
-        separation_bins = separation_bins[np.where(self.corr>0.0)].astype(np.float)
+        indices = np.where(self.corr>0.0)
+        corr_fit = self.corr[indices].astype(np.float)
+        dcorr_fit = self.dcorr[indices].astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
 
 
         #Parameter limits
@@ -772,7 +773,7 @@ class Galaxy(object):
                
                 #bounds = ([-10,10],[-3.0,0.0],[-3.0,0.0],[np.log(beta_limits[0]),np.log(beta_limits[1])])
                 popt,pcov = curve_fit(linear_function,separation_bins,
-                    np.log(corr_fit),sigma=np.log(dcorr_fit),bounds=bounds)
+                    np.log(corr_fit),sigma=dcorr_fit/corr_fit,bounds=bounds)
             elif(function == 'smooth'):
                 popt,pcov = curve_fit(smooth_function,separation_bins,
                     corr_fit,sigma=dcorr_fit,bounds=bounds)
@@ -788,19 +789,19 @@ class Galaxy(object):
                 try:
                 #Fit to this
                     if(function == 'piecewise'):
-                        if(use_bounds):
+                        if(use_bounds == True):
                             popt,pcov = curve_fit(linear_function,separation_bins,
-                                np.log(y_fit),sigma=np.log(dcorr_fit),bounds=bounds)
+                                np.log(y_fit),sigma=dcorr_fit/corr_fit,bounds=bounds)
                         else:
                             popt,pcov = curve_fit(linear_function,separation_bins,
-                                np.log(y_fit),sigma=np.log(dcorr_fit))
+                                np.log(y_fit),sigma=dcorr_fit/corr_fit)
                     elif(function == 'smooth'):
-                        if(use_bounds):
+                        if(use_bounds == True):
                             popt,pcov = curve_fit(smooth_function,separation_bins,
                                 corr_fit,sigma=dcorr_fit,bounds=bounds)
                         else:
                             popt,pcov = curve_fit(linear_function,separation_bins,
-                                np.log(y_fit),sigma=np.log(dcorr_fit))
+                                np.log(y_fit),sigma=dcorr_fit/corr_fit)
                 except :
                     continue
 
