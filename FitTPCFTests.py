@@ -4,7 +4,7 @@ from Plot_Class import *
 from MCMCfit import *
 
 
-def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_radial'):
+def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_radial',function='piecewise'):
     """
     Read MCMC samplers and plot the TPCF with best fit power law for all galaxies. 
 
@@ -17,11 +17,15 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
             Input directory from which to read the results. Default is results directory.
         method : 
             Method for which TPCF's have been computed.
+        function:
+            Function fitted using MCMC: piecewise or singlepl
     Returns:
         None
 
 
     """
+
+    print("Plotting Combined TPCF plot with MCMC fits using a {} function.".format(function))
 
     #Create figure and axs instance
     fig,axs = plt.subplots(nrows=3,ncols=4,figsize=(16,12))
@@ -46,6 +50,8 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
         else:
             raise myError("Method not recognised.")
 
+    if(function not in ['piecewise','singlepl']):
+        raise ValueError("Function should be either piecewise or singlepl.")
 
     i,j = 0,0            
     #Loop through the galaxies
@@ -56,7 +62,13 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
             galaxy_dir = indir+galaxy_name+'/'+method_dir
 
         galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
-        sampler = loadObj(galaxy_dir+'MCMC_sampler')
+        if(function == 'piecewise'):
+            
+            sampler = loadObj(galaxy_dir+'/PiecePL_MCMC/'+'MCMC_sampler')
+        else :
+            sampler = loadObj(galaxy_dir+'/SinglePL_MCMC/'+'MCMC_sampler')
+            
+        
         samples = sampler.flatchain
         galaxy_class.fit_values = samples[np.argmax(sampler.flatlnprobability)]
         galaxy_class.fit_errors = samples.std(axis=0)
@@ -64,26 +76,43 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
 
         #Secondary axis
         separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+        separation_bins = separation_bins.astype(np.float)
+        plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
+
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
         
         try:
             
             axs[i,j].set_yscale('log')
-            axs[i,j].errorbar(separation_bins,galaxy_class.corr,yerr=galaxy_class.dcorr,
+            axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
                 fmt='.-')
             ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
             
             #Fit plot
-            break_theta = np.exp(galaxy_class.fit_values[3])
-            break_theta_error = np.exp(galaxy_class.fit_errors[3])
-            axs[i,j].plot(separation_bins,np.exp(linear_function(separation_bins,galaxy_class.fit_values[0],
-                galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3])),
+            if(function == 'piecewise'):
+                break_theta = np.exp(galaxy_class.fit_values[3])
+                break_theta_error = np.exp(galaxy_class.fit_errors[3])
+                axs[i,j].plot(plot_points,np.exp(linear_function(plot_points,galaxy_class.fit_values[0],
+                    galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3])),
+                    ls='--',label='fit')
+                axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+                    label=r'$\alpha_1 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[1],galaxy_class.fit_errors[1]))
+                axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+                    label=r'$\alpha_2 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[2],galaxy_class.fit_errors[2]))
+                axs[i,j].axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
+                    break_theta_error))
+            else:
+
+                axs[i,j].plot(plot_points,np.exp(onepowerlaw_function(plot_points,galaxy_class.fit_values[0],
+                galaxy_class.fit_values[1])),
                 ls='--',label='fit')
-            axs[i,j].plot(separation_bins,galaxy_class.corr,lw=0.0,
-                label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[1],galaxy_class.fit_errors[1]))
-            axs[i,j].plot(separation_bins,galaxy_class.corr,lw=0.0,
-                label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[2],galaxy_class.fit_errors[2]))
-            axs[i,j].axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
-                break_theta_error))
+
+                axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+                    label=r'$\alpha_1 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[1],
+                        galaxy_class.fit_errors[1]))
 
             #Plot stuff
             #X-labels only on bottom row
@@ -117,7 +146,10 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
 
 
     if(save):
-        filename = outdir+'Combined_TPCF_MCMC.pdf'
+        if(function == 'piecewise'):
+            filename = outdir+'Combined_TPCF_MCMC_Piecewise.pdf'
+        else :
+            filename = outdir+'Combined_TPCF_MCMC_SinglePL.pdf'
         plt.savefig(filename,bbox_inches='tight')
         plt.close()
     else :
@@ -146,7 +178,7 @@ def Test_CombinedFit(save=False,outdir='../Results/',indir=None,method='masked_r
     """
     
     if(function not in ['piecewise','smooth','singlepl']):
-        raise ValueError("This funtional form does not exist.")
+        raise ValueError("This functional form does not exist.")
 
 
     #Create figure and axs instance
@@ -188,7 +220,7 @@ def Test_CombinedFit(save=False,outdir='../Results/',indir=None,method='masked_r
             galaxy_class.fit_values = samples[np.argmax(sampler.flatlnprobability)]
             galaxy_class.fit_errors = samples.std(axis=0)
         else:
-            galaxy_class.fit_power_law(use_bounds=True,function=function)
+            galaxy_class.fit_power_law(use_bounds=False,function=function)
 
         plot_class = myPlot(galaxy_class)
 
@@ -196,12 +228,16 @@ def Test_CombinedFit(save=False,outdir='../Results/',indir=None,method='masked_r
         separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
         plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
 
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
         
 
         
             
         axs[i,j].set_yscale('log')
-        axs[i,j].errorbar(separation_bins,galaxy_class.corr,yerr=galaxy_class.dcorr,
+        axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
             fmt='.-')
         ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
         
@@ -224,11 +260,11 @@ def Test_CombinedFit(save=False,outdir='../Results/',indir=None,method='masked_r
                 galaxy_class.fit_values[1])),
                 ls='--',label='fit')
 
-        axs[i,j].plot(separation_bins,galaxy_class.corr,lw=0.0,
+        axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
             label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[1],galaxy_class.fit_errors[1]))
         
         if(function in ['piecewise','smooth']):
-            axs[i,j].plot(separation_bins,galaxy_class.corr,lw=0.0,
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
                 label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[2],galaxy_class.fit_errors[2]))
             axs[i,j].axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
                 break_theta_error))
@@ -264,7 +300,12 @@ def Test_CombinedFit(save=False,outdir='../Results/',indir=None,method='masked_r
 
 
     if(save):
-        filename = outdir+'Combined_TPCF_SinglePL.pdf'
+        if(function == 'singlepl'):
+            filename = outdir+'Combined_TPCF_SinglePL.pdf'
+        elif(function == 'smooth'):
+            filename = outdir+'Combined_TPCF_Smooth.pdf'    
+        elif(function == 'piecewise'):
+            filename = outdir+'Combined_TPCF_Piecewise.pdf'    
         plt.savefig(filename,bbox_inches='tight')
         plt.close()
     else :
@@ -274,9 +315,9 @@ def Test_CombinedFit(save=False,outdir='../Results/',indir=None,method='masked_r
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=
         'Command Line Inputs for tpcf-starclusters. All inputs optional. ')
-    ap.add_argument('-method',action='store',type=str,default='masked_radial',
+    ap.add_argument('-method',action='store',type=str,default='masked',
         help='Method to prepare the random catalog: "Uniform","Masked"' +
-        '" Masked_radial (default)" ')
+        '" Masked (default)" ')
     ap.add_argument('-galaxy',action='store',type=str,default=None,
         help = 'Galaxy for which tpcf to be computed. By default done for all.')
     ap.add_argument('-function',action='store',type=str,default='piecewise',
@@ -298,6 +339,7 @@ if __name__ == "__main__":
 
             print("Performing MCMC for galaxy {}".format(galaxy_name))
             fit_MCMC_galaxy(galaxy_name,method=method,function=args['function'])
+            plot_MCMCfitsall(save=True,method=method,function=args['function'])
 
     else :
         fit_MCMC_galaxy(galaxy_input,method=method,function=args['function'])
