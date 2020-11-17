@@ -226,9 +226,9 @@ def Combined_TPCF_Ages(save=False,outdir='../Results/',indir=None,method='masked
         axs[i,j].plot(plot_points,np.exp(linear_function(plot_points,galaxy_class.fit_values[0],
             galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3])),
             ls='--',label='fit')
-        axs[i,j].plot(separation_bins,galaxy_class.corr,lw=0.0,
+        axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
             label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[1],galaxy_class.fit_errors[1]))
-        axs[i,j].plot(separation_bins,galaxy_class.corr,lw=0.0,
+        axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
             label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[2],galaxy_class.fit_errors[2]))
         axs[i,j].axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
             break_theta_error))
