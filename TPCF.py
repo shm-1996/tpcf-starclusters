@@ -213,8 +213,8 @@ def masked_random_sample(galaxy,len_random=100):
     if(max_y<min_y) :
         min_y,max_y = max_y,min_y
         
-    random_x = min_x+ np.random.random(len_random)*max_x
-    random_y = min_y+ np.random.random(len_random)*max_y
+    random_x = min_x+ np.random.random(len_random)*(max_x-min_x)
+    random_y = min_y+ np.random.random(len_random)*(max_y-min_y)
     random_xy = np.vstack((random_x,random_y)).T
 
     #Consider possibility of multiple regions
