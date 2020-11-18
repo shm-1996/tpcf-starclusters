@@ -132,7 +132,7 @@ def masked_radial_random_sample(galaxy,len_random=100) :
             xyz_centre[1])**2 + (xyz_data[2]-xyz_centre[2])**2)
 
     #separation in kpc
-    #Galaxy distance in Mpc
+    #Galaxy distance is in Mpc: convert
     distance_data = distance_data*galaxy.distance*1.e6*const.Parsec/(1.e3*const.Parsec)
     
     # 50 Bins b/w 0.01 to 11 kpc
@@ -173,7 +173,7 @@ def masked_radial_random_sample(galaxy,len_random=100) :
 
     return ra_random,dec_random
 
-def masked_random_sample(galaxy,len_random=100):
+def masked_random_sample(galaxy_class,len_random=100):
     """
     Prepare a random catalog that takes into account the FOV edge effects
     and ACS chip gaps. 
@@ -193,10 +193,10 @@ def masked_random_sample(galaxy,len_random=100):
     """
 
     # DS9 Region file to select footprint region
-    region = read_ds9(galaxy.region_file)
-    fits_file = galaxy.fits_file
-    RA = galaxy.ra_raw
-    DEC = galaxy.dec_raw
+    region = read_ds9(galaxy_class.region_file)
+    fits_file = galaxy_class.fits_file
+    RA = galaxy_class.ra
+    DEC = galaxy_class.dec
 
     # For converting pixel region to sky region read the fits file
     hdu = fits.open(fits_file)[0]
@@ -217,30 +217,36 @@ def masked_random_sample(galaxy,len_random=100):
     random_y = min_y+ np.random.random(len_random)*(max_y-min_y)
     random_xy = np.vstack((random_x,random_y)).T
 
-    #Consider possibility of multiple regions
-    size_regions = np.size(region)
-    mask_xy = region[0].contains(regions.PixCoord(random_x,random_y))
-    for i in range(1,size_regions):
-        mask_xy += region[i].contains(regions.PixCoord(random_x,random_y))
+    mask_xy = None
+    for i in range(0,np.size(region)):
+        region_dep = deproject_region(region,i,galaxy_class.pa,galaxy_class.inclination)
+        if(region_dep is not None):
+            if(mask_xy is None):
+                mask_xy = region_dep.contains(regions.PixCoord(random_x,random_y))
+            else:
+                mask_xy += region_dep.contains(regions.PixCoord(random_x,random_y))
 
-    # Check whether point lies in the masked region
-    # mask_xy = region[0].contains(regions.PixCoord(random_x,random_y))
     random_xy_masked = random_xy[mask_xy]
-
-    #ra_dec_masked = wcs.wcs_pix2world(random_xy_masked,0)
     ra_masked,dec_masked = random_xy_masked[:,0], random_xy_masked[:,1]
-
-    # Deproject random sample
-    if(galaxy.deproject_galaxy == True):
-        ra_random = ra_masked*np.cos(np.deg2rad(galaxy.pa)) + dec_masked*np.sin(np.deg2rad(galaxy.pa))
-        dec_random = -ra_masked*np.sin(np.deg2rad(galaxy.pa)) + dec_masked*np.cos(np.deg2rad(galaxy.pa))
-        ra_random = ra_random/(np.cos(np.deg2rad(galaxy.inclination)))
-    else : 
-        ra_random, dec_random = ra_masked, dec_masked
-
-    ra_random,dec_random = wcs.all_pix2world(ra_random,dec_random,0)
-
+    ra_random,dec_random = wcs.all_pix2world(ra_masked,dec_masked,0)
+                
     return ra_random, dec_random
+
+
+def deproject_region(region,i,pa,inclination):
+    #rotate clockwise by angle PA
+    region_rotated = region[i].rotate(regions.PixCoord(0,0),-pa*u.deg)
+    try:
+        size = np.size(region_rotated.vertices)
+    except:
+        return None
+    x = np.zeros(size)
+    y = np.zeros(size)
+    for i in range(0,size):
+        x[i] = region_rotated.vertices[i].x/np.cos(np.deg2rad(inclination))
+        y[i] = region_rotated.vertices[i].y
+    regions_dep = regions.PolygonPixelRegion(vertices=regions.PixCoord(x=x,y=y))    
+    return regions_dep
 
 def uniform_sphere(galaxy, len_random=100,ignore_deproject=False):
     """Draw a uniform sample on a sphere
