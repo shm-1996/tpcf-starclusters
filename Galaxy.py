@@ -612,12 +612,10 @@ class Galaxy(object):
                 self.no_bins = no_bins
                 print("Changing number of bins to {}".format(set_no_bins))
             if(set_bin_limits is not None):
-                set_bin_limits = float(set_bin_limits)
-                self.bin_limits = set_bin_limits
+                self.bin_limits[0],self.bin_limits[1] = float(set_bin_limits[0]),float(set_bin_limits[1])
                 print("Changing bin limits to {}".format(set_bin_limits))
 
             print("Recomputing bins")
-            self.no_bins = set_no_bins 
             #Convert bin limits in parsec to arcsec
             distance = self.distance*const.Parsec*1.e6
             bin_limits[0]= self.bin_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
