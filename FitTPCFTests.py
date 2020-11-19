@@ -2,6 +2,7 @@ from header import *
 from Galaxy import *
 from Plot_Class import *
 from MCMCfit import *
+from CreateTables import compare_AIC
 
 
 def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_radial',function='piecewise'):
@@ -18,7 +19,7 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
         method : 
             Method for which TPCF's have been computed.
         function:
-            Function fitted using MCMC: piecewise or singlepl
+            Function fitted using MCMC: piecewise or singlepl or best among both
     Returns:
         None
 
@@ -50,11 +51,12 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
         else:
             raise myError("Method not recognised.")
 
-    if(function not in ['piecewise','singlepl']):
-        raise ValueError("Function should be either piecewise or singlepl.")
+    if(function not in ['piecewise','singlepl','best']):
+        raise ValueError("Function should be either piecewise or singlepl or best.")
 
     i,j = 0,0            
     #Loop through the galaxies
+    galaxy_function = function
     for galaxy_name in list_of_galaxies:
         if(method_dir == None):
             galaxy_dir = indir+galaxy_name+'/'            
@@ -62,7 +64,18 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
             galaxy_dir = indir+galaxy_name+'/'+method_dir
 
         galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
-        if(function == 'piecewise'):
+
+
+
+        if(function == 'best'):
+            #Choose best function based on AIC value
+            AIC_single,AIC_piecewise = compare_AIC(galaxy_name)
+            if(AIC_single<AIC_piecewise):
+                galaxy_function = 'singlepl'
+            else:
+                galaxy_function = 'piecewise'
+
+        if(galaxy_function == 'piecewise'):
             
             sampler = loadObj(galaxy_dir+'/PiecePL_MCMC/'+'MCMC_sampler')
         else :
@@ -92,7 +105,7 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
             ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
             
             #Fit plot
-            if(function == 'piecewise'):
+            if(galaxy_function == 'piecewise'):
                 break_theta = np.exp(galaxy_class.fit_values[3])
                 break_theta_error = np.exp(galaxy_class.fit_errors[3])
                 axs[i,j].plot(plot_points,np.exp(linear_function(plot_points,galaxy_class.fit_values[0],
@@ -148,8 +161,10 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
     if(save):
         if(function == 'piecewise'):
             filename = outdir+'Combined_TPCF_MCMC_Piecewise.pdf'
-        else :
+        elif(function == 'singlepl') :
             filename = outdir+'Combined_TPCF_MCMC_SinglePL.pdf'
+        else:
+            filename = outdir+'Combined_TPCF_MCMC_Best.pdf'
         plt.savefig(filename,bbox_inches='tight')
         plt.close()
     else :
@@ -324,7 +339,7 @@ if __name__ == "__main__":
         help='Function to use to fit.')
 
     args = vars(ap.parse_args())
-    if(args['function'] not in ['piecewise','singlepl']):
+    if(args['function'] not in ['piecewise','singlepl','best']):
         raise ValueError("Wrong function type.")
 
     method = args['method'].lower()
@@ -337,9 +352,9 @@ if __name__ == "__main__":
 
         for galaxy_name in list_of_galaxies:
 
-            print("Performing MCMC for galaxy {}".format(galaxy_name))
-            fit_MCMC_galaxy(galaxy_name,method=method,function=args['function'])
-            plot_MCMCfitsall(save=True,method=method,function=args['function'])
+            
+            #fit_MCMC_galaxy(galaxy_name,method=method,function=args['function'])
+        plot_MCMCfitsall(save=True,method=method,function=args['function'])
 
     else :
         fit_MCMC_galaxy(galaxy_input,method=method,function=args['function'])
