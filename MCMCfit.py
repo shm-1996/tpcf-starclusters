@@ -104,6 +104,8 @@ def fit_MCMC_galaxy(galaxy_name,method='masked_radial',function='piecewise'):
     else:
         raise myError("Method not recognised.")
 
+    print("Performing MCMC for galaxy {}".format(galaxy_name))
+
     galaxy_class = loadObj(galaxy_class.outdir+
             '{}_summary'.format(galaxy_class.name))
     if(function == 'piecewise'):
