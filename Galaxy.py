@@ -651,13 +651,20 @@ class Galaxy(object):
         #Convert RA/DEC to appropriate pixels in the WCS 
         xpix,ypix = wcs.all_world2pix(self.ra_raw,self.dec_raw,0)
 
+        #Coordinates of centre of galaxy
+        ra_dec = SkyCoord.from_name(self.name)
+        xpix_c,ypix_c = wcs.all_world2pix(ra_dec.ra.value,ra_dec.dec.value,0)
+
         # See Eq 1 Grasha et al 2017
         #Basically rotating all points by PA in clockwise direction to align major axis with north. 
-        ra_dep = xpix*np.cos(np.deg2rad(self.pa)) + ypix*np.sin(np.deg2rad(self.pa))
-        dec_dep = -1.*xpix*np.sin(np.deg2rad(self.pa)) + ypix*np.cos(np.deg2rad(self.pa))
+        ra_dep = (xpix-xpix_c)*np.cos(np.deg2rad(self.pa)) + (ypix-ypix_c)*np.sin(np.deg2rad(self.pa))
+        dec_dep = -1.*(xpix-xpix_c)*np.sin(np.deg2rad(self.pa)) + (ypix-ypix_c)*np.cos(np.deg2rad(self.pa))
 
         #Correct for inclination : separation only along minor axis changes
         ra_dep = ra_dep/(np.cos(np.deg2rad(self.inclination)))
+
+        ra_dep = ra_dep+xpix_c
+        dec_dep = dec_dep+ypix_c
 
         #Convert from pixel back to RA/DEC
         ra_dep,dec_dep = wcs.all_pix2world(ra_dep,dec_dep,0)

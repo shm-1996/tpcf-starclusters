@@ -30,8 +30,7 @@ except ImportError:
     import warnings
     sklearn_has_two_point = False
 
-def random_distribution_probability(RA,DEC,distance_hist,xyz_centre,region_file,
-    fits_file) :
+def random_distribution_probability(RA,DEC,distance_hist,xyz_centre,galaxy_class) :
     """
     Returns the probability that a random RA,DEC combination should exist, 
     by taking into account the distribution of distances for the clusters in the
@@ -64,24 +63,19 @@ def random_distribution_probability(RA,DEC,distance_hist,xyz_centre,region_file,
     bins_radial = distance_hist[1]
     
     #Check whether point lies in masked region
-    region = read_ds9(region_file)
+    region = read_ds9(galaxy_class.region_file)
     # For converting pixel region to sky region read the fits file
-    hdu = fits.open(fits_file)[0]
+    hdu = fits.open(galaxy_class.fits_file)[0]
     wcs = WCS(hdu.header)
 
     random_x,random_y = wcs.wcs_world2pix(RA,DEC,0)
-    #Consider possibility of multiple regions
-    size_regions = np.size(region)
-    mask_xy = region[0].contains(regions.PixCoord(random_x,random_y))
-    for i in range(1,size_regions):
-        mask_xy += region[i].contains(regions.PixCoord(random_x,random_y))
-    
+
     xyz_array = np.array(ra_dec_to_xyz(RA,DEC))
     distance = np.sqrt((xyz_array[0]-xyz_centre[0])**2 + (xyz_array[1]-\
             xyz_centre[1])**2 + (xyz_array[2]-xyz_centre[2])**2)
+    
     #separation in kpc
-    #TODO: Make distance to galaxy general
-    distance = distance*9.9*1.e6*const.Parsec/(1.e3*const.Parsec)
+    distance = distance*galaxy_class.distance*1.e6*const.Parsec/(1.e3*const.Parsec)
     
     #Put into bins
     distance_bins = np.digitize(distance,bins_radial)
@@ -92,20 +86,33 @@ def random_distribution_probability(RA,DEC,distance_hist,xyz_centre,region_file,
     #Get probability of sample associated with distance
     rand_prob = prob_bins[distance_bins]
     
+    #Compute FOV mask
+    ra_dec = SkyCoord.from_name(galaxy_class.name)
+    xpix_c,ypix_c = wcs.all_world2pix(ra_dec.ra.value,ra_dec.dec.value,0)
+    mask_xy = None
+    for i in range(0,np.size(region)):
+        region_dep = deproject_region(region,i,galaxy_class.pa,galaxy_class.inclination,xpix_c,ypix_c)
+        if(region_dep is not None):
+            if(mask_xy is None):
+                mask_xy = region_dep.contains(regions.PixCoord(random_x,random_y))
+            else:
+                mask_xy += region_dep.contains(regions.PixCoord(random_x,random_y))
+
+
     #Set points in mask with 0.0 probability
     rand_prob[np.where(mask_xy == False)] = 0.0
     
     return rand_prob
 
-def masked_radial_random_sample(galaxy,len_random=100) :
+def masked_radial_random_sample(galaxy_class,len_random=100) :
     """
     Prepare a random catalog that takes into account the FOV edge effects
     and ACS chip gaps, as well as match the distribution of the distances of 
     the clusters in the random sample to that of the data. 
     Parameters
     ----------
-    galaxy : class Galaxy
-        Instance of class Galaxy that contains metadata of the galaxy.
+    galaxy_class : class Galaxy
+        Instance of class Galaxy that contains metadata of the galaxy_class.
     len_random : integer
         Number of attempts of points in the random array. 
         Keep at least > 100*len(data)
@@ -116,35 +123,35 @@ def masked_radial_random_sample(galaxy,len_random=100) :
     """
 
     #Compute distance to galactic centre
-    ra_centre = galaxy.centre[0]
-    dec_centre = galaxy.centre[1]
+    ra_dec = SkyCoord.from_name(galaxy_class.name)
+    ra_centre,dec_centre = ra_dec.ra.value,ra_dec.dec.value
 
     #RA/DEC
-    RA = galaxy.ra_raw
-    DEC = galaxy.dec_raw
+    RA = galaxy_class.ra
+    DEC = galaxy_class.dec
     
     #xyz coordinates 
     xyz_data = np.array(ra_dec_to_xyz(RA,DEC))
     xyz_centre = np.array(ra_dec_to_xyz(ra_centre,dec_centre))
 
-    #Distance
+    # Relative separation from centre of galaxy
     distance_data = np.sqrt((xyz_data[0]-xyz_centre[0])**2 + (xyz_data[1]-\
             xyz_centre[1])**2 + (xyz_data[2]-xyz_centre[2])**2)
 
     #separation in kpc
-    #Galaxy distance is in Mpc: convert
-    distance_data = distance_data*galaxy.distance*1.e6*const.Parsec/(1.e3*const.Parsec)
+    #Galaxy distance is in Mpc: convert to kpc
+    distance_data = distance_data*galaxy_class.distance*1.e6*const.Parsec/(1.e3*const.Parsec)
     
     # 50 Bins b/w 0.01 to 11 kpc
     bins_radial = np.linspace(0.01,11,50)
     hist,bins = np.histogram(distance_data,bins=bins_radial)
     distance_hist = (hist/(np.size(distance_data)),bins)
     #Random RA/DEC
-    ra_rand, dec_rand = uniform_sphere(galaxy,len_random,ignore_deproject=True)
+    ra_rand, dec_rand = uniform_sphere(galaxy_class,len_random,ignore_deproject=True)
 
     #Compute probabilities of existing
     rand_prob = random_distribution_probability(ra_rand,dec_rand,distance_hist,
-        xyz_centre,region_file=galaxy.region_file,fits_file=galaxy.fits_file)
+        xyz_centre,galaxy_class)
 
     #Random nos b/w 0 & 1
     rand_values = np.random.random(len(ra_rand))
@@ -157,21 +164,7 @@ def masked_radial_random_sample(galaxy,len_random=100) :
     ra_accepted = ra_rand[accepted_indices]
     dec_accepted = dec_rand[accepted_indices]
 
-    hdu = fits.open(galaxy.fits_file)[0]
-    wcs = WCS(hdu.header)
-    xpix,ypix = wcs.all_world2pix(ra_accepted,dec_accepted,0)
-
-    # Deproject random sample
-    if(galaxy.deproject_galaxy == True):
-        ra_random = xpix*np.cos(np.deg2rad(galaxy.pa)) + ypix*np.sin(np.deg2rad(galaxy.pa))
-        dec_random = -xpix*np.sin(np.deg2rad(galaxy.pa)) + ypix*np.cos(np.deg2rad(galaxy.pa))
-        ra_random = ra_random/(np.cos(np.deg2rad(galaxy.inclination)))
-    else : 
-        ra_random, dec_random = ra_accepted, dec_accepted
-
-    ra_random,dec_random = wcs.all_pix2world(ra_random,dec_random,0)
-
-    return ra_random,dec_random
+    return ra_accepted,dec_accepted
 
 def masked_random_sample(galaxy_class,len_random=100):
     """
@@ -217,9 +210,11 @@ def masked_random_sample(galaxy_class,len_random=100):
     random_y = min_y+ np.random.random(len_random)*(max_y-min_y)
     random_xy = np.vstack((random_x,random_y)).T
 
+    ra_dec = SkyCoord.from_name(galaxy_class.name)
+    xpix_c,ypix_c = wcs.all_world2pix(ra_dec.ra.value,ra_dec.dec.value,0)
     mask_xy = None
     for i in range(0,np.size(region)):
-        region_dep = deproject_region(region,i,galaxy_class.pa,galaxy_class.inclination)
+        region_dep = deproject_region(region,i,galaxy_class.pa,galaxy_class.inclination,xpix_c,ypix_c)
         if(region_dep is not None):
             if(mask_xy is None):
                 mask_xy = region_dep.contains(regions.PixCoord(random_x,random_y))
@@ -233,9 +228,9 @@ def masked_random_sample(galaxy_class,len_random=100):
     return ra_random, dec_random
 
 
-def deproject_region(region,i,pa,inclination):
-    #rotate clockwise by angle PA
-    region_rotated = region[i].rotate(regions.PixCoord(0,0),-pa*u.deg)
+def deproject_region(region,i,pa,inclination,xpix_c,ypix_c):
+    #rotate clockwise by angle PA about centre of galaxy
+    region_rotated = region[i].rotate(regions.PixCoord(xpix_c,ypix_c),-pa*u.deg)
     try:
         size = np.size(region_rotated.vertices)
     except:
@@ -243,7 +238,9 @@ def deproject_region(region,i,pa,inclination):
     x = np.zeros(size)
     y = np.zeros(size)
     for i in range(0,size):
-        x[i] = region_rotated.vertices[i].x/np.cos(np.deg2rad(inclination))
+        x[i] = region_rotated.vertices[i].x/np.cos(np.deg2rad(inclination)) -\
+        xpix_c/np.cos(np.deg2rad(inclination)) + xpix_c
+
         y[i] = region_rotated.vertices[i].y
     regions_dep = regions.PolygonPixelRegion(vertices=regions.PixCoord(x=x,y=y))    
     return regions_dep
@@ -271,8 +268,8 @@ def uniform_sphere(galaxy, len_random=100,ignore_deproject=False):
     """
 
     # RA/DEC Limits
-    RAlim = min(galaxy.ra_raw),max(galaxy.ra_raw)
-    DEClim = min(galaxy.dec_raw),max(galaxy.dec_raw)
+    RAlim = min(galaxy.ra),max(galaxy.ra)
+    DEClim = min(galaxy.dec),max(galaxy.dec)
 
     zlim = np.sin(np.pi * np.asarray(DEClim) / 180.)
 
