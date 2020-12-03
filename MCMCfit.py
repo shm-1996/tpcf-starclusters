@@ -23,12 +23,14 @@ def model(params,data):
         lambda data : A_2 + (alpha_1-alpha_2)*beta + alpha_2*np.log(data)])
     return function
 
-def lnprior(params,distance):
+def lnprior(params,distance,bins):
 #    A_1,A_2,alpha_1,alpha_2,beta = params
     A_1,alpha_1,alpha_2,beta = params
     beta_limits = [50.0, 300.0]
     beta_limits[0]= beta_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
     beta_limits[1] = beta_limits[1]*const.Parsec/distance*u.radian.to(u.arcsec)
+    #beta_limits = [np.min(bins),np.max(bins)]
+    
     if(-10<A_1<10 and 
        -5<alpha_1<0 and -5<alpha_2<0 and
       np.log(beta_limits[0])<beta<np.log(beta_limits[1])) :
@@ -36,7 +38,7 @@ def lnprior(params,distance):
     else :
         return -np.inf
 def lnprob(params, bins,data,data_error,distance):
-    lp = lnprior(params,distance)
+    lp = lnprior(params,distance,bins)
     if not np.isfinite(lp):
         return -np.inf
     return lp + lnlike(params, bins,data,data_error) 
