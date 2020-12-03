@@ -392,7 +392,7 @@ class Galaxy(object):
     ####################################################################
 
     def Compute_TPCF(self,cluster_class=-1,save=False,
-        random_method='masked_radial',verbose=False):
+        random_method='masked_radial',verbose=False,tpcf_method='landy-szalay'):
         """
         Parameters
             filename : string
@@ -406,6 +406,8 @@ class Galaxy(object):
                 method to use to prepare the random catalog
             verbose : boolean
                 print out what is being done
+            tpcf_method : string
+                method of computing TPCF. 
 
         Returns
             None
@@ -443,7 +445,7 @@ class Galaxy(object):
                         self.region_file))
 
         corr,dcorr,bootstraps = bootstrap_two_point_angular(self,
-                            method='landy-szalay',Nbootstraps=100,
+                            method=tpcf_method,Nbootstraps=100,
                             random_method=random_method)
         if(verbose):
             print("TPCF computation completed.")
@@ -477,7 +479,10 @@ class Galaxy(object):
         Class3_sources = np.where(file[:,33]==3)
         Class4_sources = np.where(file[:,33]==4)
         Cluster_sources = np.append(Class1_sources,Class2_sources)
-        Cluster_sources = np.append(Class3_sources,Cluster_sources)
+        if(self.name == 'NGC_5194'):
+            print("Class 3 Sources ignored for NGC 5194.")
+        else:
+            Cluster_sources = np.append(Class3_sources,Cluster_sources)
         
         # Compute TPCF for a subset of clusters if required
         if(cluster_class == 1) :
