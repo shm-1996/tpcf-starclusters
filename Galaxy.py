@@ -527,7 +527,10 @@ class Galaxy(object):
         Class3_sources = np.where(file[:,33]==3)
         Class4_sources = np.where(file[:,33]==4)
         Cluster_sources = np.append(Class1_sources,Class2_sources)
-        Cluster_sources = np.append(Class3_sources,Cluster_sources)
+        if(self.name == "NGC_5194"):
+            print("Class 3 sources ignored in ages.")
+        else:
+            Cluster_sources = np.append(Class3_sources,Cluster_sources)
         
         # Compute TPCF for a subset of clusters if required
         if(cluster_class == 1) :
@@ -563,7 +566,10 @@ class Galaxy(object):
         Class3_sources = np.where(file[:,33]==3)
         Class4_sources = np.where(file[:,33]==4)
         Cluster_sources = np.append(Class1_sources,Class2_sources)
-        Cluster_sources = np.append(Class3_sources,Cluster_sources)
+        if(self.name == "NGC_5194"):
+            print("Class 3 sources ignored in ages.")
+        else:
+            Cluster_sources = np.append(Class3_sources,Cluster_sources)
         
         # Compute TPCF for a subset of clusters if required
         if(cluster_class == 1) :
