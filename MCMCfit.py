@@ -190,6 +190,8 @@ def fit_MCMC(galaxy_class,save=False,function='piecewise'):
 
     #Set initial guess
     if(function == 'piecewise'):
+        bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+        beta_limits = [np.min(bins),np.max(bins)]
         initial_guess = galaxy_class.fit_values
         
         #Modify initial guess to be in b/w 50 & 300 pc
@@ -197,8 +199,6 @@ def fit_MCMC(galaxy_class,save=False,function='piecewise'):
         beta_limits[0]= beta_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
         beta_limits[1] = beta_limits[1]*const.Parsec/distance*u.radian.to(u.arcsec)
         initial_guess[3] = np.log((beta_limits[0]+beta_limits[1])/2.)
-
-
 
     elif(function == 'singlepl'):
         initial_guess = 5.0,-1.0
