@@ -659,5 +659,7 @@ def onepowerlaw_function(theta,A1,alpha_1) :
     function = A1 + alpha_1*np.log(theta)
     return function
 
-    
+def linear_truncation(theta,A1,alpha_1,theta_c) :
+    function = A1 + alpha_1*np.log(theta) - theta/theta_c
+    return function    
         
