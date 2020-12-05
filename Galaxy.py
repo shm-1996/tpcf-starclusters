@@ -758,7 +758,7 @@ class Galaxy(object):
         if(method not in ['single','bootstrap','mcmc']) :
             raise ValueError("Method for fitting power law should be one of the"+
             " following: single, bootstrap or mcmc")
-        if(function not in ['piecewise','smooth']):
+        if(function not in ['piecewise','smooth','singletrunc']):
             raise ValueError("This funtional form does not exist.")
         
         bins = self.bins_arcsec
@@ -781,8 +781,10 @@ class Galaxy(object):
 
         if(function=='piecewise'):
             bounds = ([-10.0,-3.0,-3.0,np.log(beta_limits[0])],[10.0,0.0,0.0,np.log(beta_limits[1])])
-        else:
-             bounds = ([-10.0,-3.0,-3.0,beta_limits[0]],[10.0,0.0,0.0,beta_limits[1]])
+        elif(function == 'smooth'):
+            bounds = ([-10.0,-3.0,-3.0,beta_limits[0]],[10.0,0.0,0.0,beta_limits[1]])
+        elif(function == 'singletrunc'):
+            bounds = ([-10.0,-3.0,beta_limits[0]],[10.0,0.0,0.0,beta_limits[1]])
 
         if(method == 'single') :
             if(function == 'piecewise'):
@@ -818,6 +820,14 @@ class Galaxy(object):
                         else:
                             popt,pcov = curve_fit(linear_function,separation_bins,
                                 np.log(y_fit),sigma=dcorr_fit/corr_fit)
+
+                    if(function == 'singletrunc'):
+                        if(use_bounds == True):
+                            popt,pcov = curve_fit(linear_truncation,separation_bins,
+                                np.log(y_fit),sigma=dcorr_fit/corr_fit,bounds=bounds)
+                        else:
+                            popt,pcov = curve_fit(linear_truncation,separation_bins,
+                                np.log(y_fit),sigma=dcorr_fit/corr_fit)
                 except :
                     continue
 
@@ -826,6 +836,7 @@ class Galaxy(object):
             self.fit_values = np.median(fit_bootstraps,axis=0)
             self.fit_errors = np.std(fit_bootstraps,axis=0)
             self.fit_distribution = fit_bootstraps
+
 
 
     def read_galaxyprops(self):

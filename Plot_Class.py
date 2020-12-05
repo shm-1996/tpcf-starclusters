@@ -38,7 +38,7 @@ class myPlot():
         dcorr_fit = self.galaxy.dcorr[indices].astype(np.float)
         separation_bins = separation_bins[indices].astype(np.float)
 
-        if(function not in ['piecewise','smooth','singlepl']):
+        if(function not in ['piecewise','smooth','singlepl','singletrunc']):
             raise ValueError("This funtional form does not exist.")
 
         
@@ -80,6 +80,12 @@ class myPlot():
                 axs.plot(plot_points,np.exp(onepowerlaw_function(plot_points,self.galaxy.fit_values[0],
                     self.galaxy.fit_values[1])),
                     ls='--',label='fit')
+            elif(function == 'singletrunc'):
+                axs.plot(plot_points,np.exp(linear_truncation(plot_points,self.galaxy.fit_values[0],
+                    self.galaxy.fit_values[1],self.galaxy.fit_values[2])),
+                    ls='--',label='fit')
+                theta_c = self.galaxy.fit_values[2]
+                theta_c_error = self.galaxy.fit_errors[2]
 
                 
             axs.plot(separation_bins,corr_fit,lw=0.0,
@@ -90,6 +96,10 @@ class myPlot():
                     label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[2],self.galaxy.fit_errors[2]))
                 axs.axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
                     break_theta_error))
+            elif(function == 'singletrunc'):
+                axs.axvline(theta_c,ls=':',label=r'$\theta_c = {:2.1f} \pm {:2.1f}$'.format(theta_c,
+                    theta_c_error))
+
             
 
 
