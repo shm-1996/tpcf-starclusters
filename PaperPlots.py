@@ -6,8 +6,9 @@ Shyam Harimohan Menon (2020)
 """
 from header import *
 from Plot_Class import *
+from CreateTables import compare_AIC
 
-def Combined_TPCF(save=False,outdir='../Results/',indir=None,method='masked_radial'):
+def Combined_TPCF(save=False,outdir='../Results/',indir=None,method='masked'):
     """
     Plot the TPCF of all galaxies as a combined figure.
 
@@ -25,7 +26,8 @@ def Combined_TPCF(save=False,outdir='../Results/',indir=None,method='masked_radi
 
 
     """
-    
+    print("Plotting TPCF for all galaxies")
+
     #Create figure and axs instance
     fig,axs = plt.subplots(nrows=3,ncols=4,figsize=(16,12))
 
@@ -124,8 +126,165 @@ def Combined_TPCF(save=False,outdir='../Results/',indir=None,method='masked_radi
         plt.show()
 
 
+def Combined_TPCF_CompareAges(save=False,outdir='../Results/',indir=None,method='masked'):
+    """
+    Plot the TPCF of clusters based on age cuts.
 
-def Combined_TPCF_Ages(save=False,outdir='../Results/',indir=None,method='masked_radial',age_group='young'):
+    Parameters:
+        save: 
+            Flag to save the plot
+        outdir: 
+            Output directory in which to store plot. Default is results directory.
+        indir :
+            Input directory from which to read the results. Default is results directory.
+        method : 
+            Method for which TPCF's have been computed.   
+    Returns:
+        None
+
+
+    """
+    print("Plotting TPCFs with Age cuts.")
+
+    #Create figure and axs instance
+    fig,axs = plt.subplots(nrows=3,ncols=4,figsize=(16,12))
+
+    if(indir == None):
+        indir = os.path.abspath('../Results/Galaxies/')+'/'
+        method_dir = ''
+    else :
+        method_dir = None
+
+    #Directories
+    indir = os.path.abspath(indir)+'/'
+    outir = os.path.abspath(outdir)+'/'
+
+    if(method_dir is not None):
+        if(method.upper() == 'MASKED'):
+            method_dir = 'Masked/'
+        elif(method.upper() == 'UNIFORM'):
+            method_dir = 'Uniform/'
+        elif(method.upper() == 'MASKED_RADIAL'):
+            method_dir = 'Masked_Radial/'
+        else:
+            raise myError("Method not recognised.")
+
+
+    i,j = 0,0            
+    #Loop through the galaxies
+    for galaxy_name in list_of_galaxies:
+        if(method_dir == None):
+            galaxy_dir = indir+galaxy_name+'/'            
+        else :
+            galaxy_dir = indir+galaxy_name+'/'+method_dir
+
+        galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
+        plot_class = myPlot(galaxy_class)
+
+        separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+        separation_bins = separation_bins.astype(np.float)
+        plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
+
+        #Set axes
+        axs[i,j].set_yscale('log')            
+        ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
+        
+        #General TPCF
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
+            
+        axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
+            fmt='.-',color='#AAF54590',label=r'$\mathrm{All} \, T$')
+
+        ########################################
+        ages = galaxy_class.get_cluster_ages()
+        galaxy_class.get_ra_dec()
+        
+        #Clusters < 10Myr
+        galaxy_class.ra = galaxy_class.ra[np.where(ages <= 1.e7)]
+        galaxy_class.dec = galaxy_class.dec[np.where(ages <= 1.e7)] 
+        
+
+        #Young Clusters TPCF            
+        corr,dcorr,bootstraps = bootstrap_two_point_angular(galaxy_class,
+                        method='landy-szalay',Nbootstraps=100,
+                        random_method=method)
+        galaxy_class.corr = corr 
+        galaxy_class.dcorr = dcorr
+
+        #Isolate non-zero correlation points
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+        separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+        separation_bins = separation_bins.astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
+        separation_bins = separation_bins.astype(np.float)
+        
+        
+        axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
+            fmt='.-',color='#F56B5C90',label=r'$T < 10 \, \mathrm{Myr}$')
+        ########################################
+        galaxy_class.get_ra_dec()
+        #Old Clusters: T> 10 Myr
+        galaxy_class.ra = galaxy_class.ra[np.where(ages > 1.e7)]
+        galaxy_class.dec = galaxy_class.dec[np.where(ages > 1.e7)]
+
+        #Compute TPCF
+        corr,dcorr,bootstraps = bootstrap_two_point_angular(galaxy_class,
+                        method='landy-szalay',Nbootstraps=100,
+                        random_method=method)
+        galaxy_class.corr = corr 
+        galaxy_class.dcorr = dcorr
+
+        #Isolate non-zero correlation points
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+        separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+        separation_bins = separation_bins.astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
+        separation_bins = separation_bins.astype(np.float)
+
+        axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
+            fmt='.-',color='#4591F590',label=r'$T > 10 \, \mathrm{Myr}$')
+
+        # General Plot stuff
+        #X-labels only on bottom row
+        if(i==2):
+            axs[i,j].set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
+        #Y-labels only on left column
+        if(j == 0):
+            axs[i,j].set_ylabel(r"$\omega_{\mathrm{LS}}\left(\theta \right)$")
+        axs[i,j].set_xscale('log')
+        axs[i,j].callbacks.connect("xlim_changed", plot_class.axs_to_parsec)
+        axs[i,j].legend()
+
+        #Secondary axis label only for top row
+        if(i==0):
+            ax2.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
+
+        
+        axs[i,j].text(0.1,0.1,r'$\mathrm{NGC}$'+' '+r'${}$'.format(galaxy_name.split('_')[1]),
+            transform=axs[i,j].transAxes)
+
+        #Get position of subplot
+        j +=1
+        if(j==4):
+            j = 0
+            i +=1
+
+
+    if(save):
+        filename = outdir+'Combined_TPCF_AgeCompare.pdf'    
+        plt.savefig(filename,bbox_inches='tight')
+        plt.close()
+    else :
+        plt.show()        
+
+def Combined_TPCF_Ages(save=False,outdir='../Results/',indir=None,method='masked',age_group='young'):
     """
     Plot the TPCF of clusters with age < 10 Myr in all galaxies as a combined figure.
 
@@ -145,7 +304,8 @@ def Combined_TPCF_Ages(save=False,outdir='../Results/',indir=None,method='masked
 
 
     """
-    
+    print("Plotting TPCF for {} clusters for all galaxies".format(age_group))
+
     #Create figure and axs instance
     fig,axs = plt.subplots(nrows=3,ncols=4,figsize=(16,12))
 
@@ -213,6 +373,7 @@ def Combined_TPCF_Ages(save=False,outdir='../Results/',indir=None,method='masked
         corr_fit = galaxy_class.corr[indices].astype(np.float)
         dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
         separation_bins = separation_bins[indices].astype(np.float)
+        separation_bins = separation_bins.astype(np.float)
         
         axs[i,j].set_yscale('log')            
         ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
@@ -274,7 +435,7 @@ def Combined_TPCF_Ages(save=False,outdir='../Results/',indir=None,method='masked
 
 
 
-def Combined_TPCF_allclass(save=False,outdir='../Results/',indir=None,method='masked_radial'):
+def Combined_TPCF_allclass(save=False,outdir='../Results/',indir=None,method='masked'):
     """
     Plot the TPCF of all galaxies as a combined figure.
 
@@ -292,7 +453,8 @@ def Combined_TPCF_allclass(save=False,outdir='../Results/',indir=None,method='ma
 
 
     """
-    
+    print("Comparing TPCF for different classes of clusters for all galaxies.")
+
     #Create figure and axs instance
     fig,axs = plt.subplots(nrows=3,ncols=4,figsize=(16,12))
 
@@ -330,13 +492,16 @@ def Combined_TPCF_allclass(save=False,outdir='../Results/',indir=None,method='ma
 
         #Secondary axis
         separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+        separation_bins = separation_bins.astype(np.float)
         
             
         axs[i,j].set_yscale('log')
         ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
         
         color = ['#E13B58','#326EFA','#A5F597']
-        for k in range(1,4):                
+        for k in range(1,4):         
+            separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+            separation_bins = separation_bins.astype(np.float)       
             galaxy_class.Compute_TPCF(cluster_class=k,random_method=method)  
             indices = np.where(galaxy_class.corr>0.0)
             corr_fit = galaxy_class.corr[indices].astype(np.float)
@@ -382,7 +547,10 @@ def Combined_TPCF_allclass(save=False,outdir='../Results/',indir=None,method='ma
     else :
         plt.show()
 
-def Combined_RGBImages(save=False,outdir='../Results/',indir=None,method='masked_radial'):
+def Combined_RGBImages(save=False,outdir='../Results/',indir=None,method='masked'):
+    
+    print("Plotting HST images for all galaxies.")
+
     #Create figure and axs instance
     fig = plt.figure(figsize=(16,12),constrained_layout=True)
 
@@ -451,7 +619,10 @@ def Combined_RGBImages(save=False,outdir='../Results/',indir=None,method='masked
         plt.show()
 
 
-def Combined_Clusters(save=False,outdir='../Results/',indir=None,method='masked_radial'):
+def Combined_Clusters(save=False,outdir='../Results/',indir=None,method='masked'):
+
+    print("Plotting spatial positions of clusters in all galaxies")
+
     #Create figure and axs instance
     fig = plt.figure(figsize=(20,16),constrained_layout=True)
 
@@ -507,7 +678,7 @@ def Combined_Clusters(save=False,outdir='../Results/',indir=None,method='masked_
         ax1.set_xlim(xmin,xmax)
         ax1.set_ylim(ymin,ymax)
 
-        im1 = ax1.scatter(x-xcen,y-ycen,c=np.log10(ages),alpha=0.5,cmap=cmap)
+        im1 = ax1.scatter(x-xcen,y-ycen,s=10,c=np.log10(ages),alpha=0.5,cmap=cmap,lw=0.3)
         cbar = fig.colorbar(im1,ax = ax1,use_gridspec=False,
                             orientation='vertical',pad=0.00,aspect=30)
         
@@ -563,7 +734,10 @@ def Combined_Clusters(save=False,outdir='../Results/',indir=None,method='masked_
     else :
         plt.show()
 
-def Scatter_Correlations(save=False,outdir='../Results/',indir=None,method='masked_radial'):
+def Scatter_Correlations(save=False,outdir='../Results/',indir=None,method='masked'):
+
+    print("Plotting correlations between galaxy properties and slope of TPCF.")
+
     #Create figure and axs instance
     if(indir == None):
         indir = os.path.abspath('../Results/Galaxies/')+'/'
@@ -591,6 +765,7 @@ def Scatter_Correlations(save=False,outdir='../Results/',indir=None,method='mask
     distance = np.zeros(np.size(list_of_galaxies))
     T_value = np.zeros(np.size(list_of_galaxies))
     SFR = np.zeros(np.size(list_of_galaxies))
+    sigma_sfr = np.zeros(np.size(list_of_galaxies))
     R_25 = np.zeros(np.size(list_of_galaxies))
     alpha = np.zeros(np.size(list_of_galaxies))
     alpha_error = np.zeros(np.size(list_of_galaxies))
@@ -602,13 +777,29 @@ def Scatter_Correlations(save=False,outdir='../Results/',indir=None,method='mask
         else :
             galaxy_dir = indir+galaxy_name+'/'+method_dir
 
+
+
         galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
         galaxy_class.read_galaxyprops()
         distance[index] = galaxy_class.distance
         SFR[index] = galaxy_class.sfr
+        sigma_sfr[index] = galaxy_class.sigma_sfr
         R_25[index] = galaxy_class.r25
         T_value[index] = galaxy_class.T_value
         T_value[index] = galaxy_class.T_value
+
+        #Get alpha 
+        AIC_single,AIC_piecewise = compare_AIC(galaxy_name)
+        if(AIC_single<AIC_piecewise):
+            sampler = loadObj(galaxy_dir+'/SinglePL_MCMC/'+'MCMC_sampler')
+        else:
+            sampler = loadObj(galaxy_dir+'/PiecePL_MCMC/'+'MCMC_sampler')
+
+        samples = sampler.flatchain
+        galaxy_class.fit_values = samples[np.argmax(sampler.flatlnprobability)]
+        galaxy_class.fit_errors = samples.std(axis=0)
+
+
         alpha[index] = galaxy_class.fit_values[1]
         alpha_error[index] = galaxy_class.fit_errors[1]
         index +=1
@@ -617,26 +808,27 @@ def Scatter_Correlations(save=False,outdir='../Results/',indir=None,method='mask
 
     fig,axs = plt.subplots(nrows=2,ncols=2,figsize=(12,8))
 
-    axs[0,0].errorbar(distance,alpha,yerr=alpha_error,elinewidth=3.0,fmt='s',
-        ms=8.0,color='#E200E690')
-    axs[0,0].set_xlabel(r"$\mathrm{D} \, \left( \mathrm{Mpc} \right)$")
-    axs[0,0].set_ylabel(r"$\alpha_1$")
 
-    axs[0,1].errorbar(R_25/(const.Parsec*1.e3),alpha,yerr=alpha_error,elinewidth=3.0,fmt='s',
+    axs[0,0].errorbar(R_25,alpha,yerr=alpha_error,elinewidth=3.0,fmt='s',
         ms=8.0,color='#E200E690')
-    axs[0,1].set_xlabel(r"$\mathrm{R}_{25} \, \left( \mathrm{kpc} \right)$")
+    axs[0,0].set_xlabel(r"$\mathrm{R}_{25} \, \left( \mathrm{kpc} \right)$")
     
 
-    axs[1,0].errorbar(T_value,alpha,yerr=alpha_error,elinewidth=3.0,fmt='s',
+    axs[0,1].errorbar(T_value,alpha,yerr=alpha_error,elinewidth=3.0,fmt='s',
         ms=8.0,color='#E200E690')
-    axs[1,0].set_xlabel(r"$\mathrm{T_{\mathrm{Hubble}}}$")
-    axs[1,0].set_ylabel(r"$\alpha_1$")
-    axs[1,0].set_xlim(3,10)
+    axs[0,1].set_xlabel(r"$\mathrm{T_{\mathrm{Hubble}}}$")
+    axs[0,1].set_ylabel(r"$\alpha_1$")
+    axs[0,1].set_xlim(3,10)
 
-    axs[1,1].errorbar(SFR,alpha,yerr=alpha_error,elinewidth=3.0,fmt='s',
+    axs[1,0].errorbar(SFR,alpha,yerr=alpha_error,elinewidth=3.0,fmt='s',
         ms=8.0,color='#E200E690')
-    axs[1,1].set_xlabel(r"$SFR_{\mathrm{UV}} \, \left( M_\odot \, \mathrm{yr}^{-1} \right)$")
-    axs[1,1].set_xlim(-0.5,12)
+    axs[1,0].set_xlabel(r"$SFR_{\mathrm{UV}} \, \left( M_\odot \, \mathrm{yr}^{-1} \right)$")
+    axs[1,0].set_xlim(-0.5,12)
+
+    axs[1,1].errorbar(sigma_sfr,alpha,yerr=alpha_error,elinewidth=3.0,fmt='s',
+        ms=8.0,color='#E200E690')
+    axs[1,1].set_xlabel(r"$\Sigma_{\mathrm{SFR}} \, \left(\mathrm{M}_{\odot} \, \mathrm{pc}^{-2} \, \mathrm{yr}^{-1} \right)$")
+    axs[1,1].set_ylabel(r"$\alpha_1$")
 
 
     if(save):
@@ -648,16 +840,117 @@ def Scatter_Correlations(save=False,outdir='../Results/',indir=None,method='mask
 
 
 
+def Compare_TPCFMethods(save=False,outdir='../Results/',indir=None,method='masked'):
+
+    print("Plotting comparison of methods to compute TPCF for all galaxies.")
+
+    fig,axs = plt.subplots(nrows=3,ncols=4,figsize=(16,12))
+
+    if(indir == None):
+        indir = os.path.abspath('../Results/Galaxies/')+'/'
+        method_dir = ''
+    else :
+        method_dir = None
+
+    #Directories
+    indir = os.path.abspath(indir)+'/'
+    outir = os.path.abspath(outdir)+'/'
+
+    if(method_dir is not None):
+        if(method.upper() == 'MASKED'):
+            method_dir = 'Masked/'
+        elif(method.upper() == 'UNIFORM'):
+            method_dir = 'Uniform/'
+        elif(method.upper() == 'MASKED_RADIAL'):
+            method_dir = 'Masked_Radial/'
+        else:
+            raise myError("Method not recognised.")
+
+
+    i,j = 0,0            
+    #Loop through the galaxies
+    for galaxy_name in list_of_galaxies:
+        if(method_dir == None):
+            galaxy_dir = indir+galaxy_name+'/'            
+        else :
+            galaxy_dir = indir+galaxy_name+'/'+method_dir
+
+        print("Computing for {}".format(galaxy_name))
+
+        galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
+        plot_class = myPlot(galaxy_class)
+
+        #Secondary axis
+        separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+        separation_bins = separation_bins.astype(np.float)
+
+        
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
+            
+        axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
+            fmt='.-',label='Landy-Szalay')
+        ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
+
+        #Compute Standard TPCF
+        galaxy_class.Compute_TPCF(random_method='masked',tpcf_method='standard')
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+        separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+        separation_bins = separation_bins.astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
+
+        axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
+            fmt='.-',label='Standard')
+
+        #Plot stuff
+        #X-labels only on bottom row
+        if(i==2):
+            axs[i,j].set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
+        #Y-labels only on left column
+        if(j == 0):
+            axs[i,j].set_ylabel(r"$\omega_{\mathrm{LS}}\left(\theta \right)$")
+        axs[i,j].set_xscale('log')
+        axs[i,j].set_yscale('log')
+        axs[i,j].callbacks.connect("xlim_changed", plot_class.axs_to_parsec)
+        axs[i,j].legend()
+
+        #Secondary axis label only for top row
+        if(i==0):
+            ax2.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
+
+        
+        axs[i,j].text(0.1,0.1,r'$\mathrm{NGC}$'+' '+r'${}$'.format(galaxy_name.split('_')[1]),
+            transform=axs[i,j].transAxes)
+
+        #Get position of subplot
+        j +=1
+        if(j==4):
+            j = 0
+            i +=1
+
+
+    if(save):
+        print("Saving...")
+        filename = outdir+'Compare_TPCFMethods.pdf'
+        plt.savefig(filename,bbox_inches='tight')
+        plt.close()
+    else :
+        plt.show()
 
 
 
 
 if __name__ == "__main__":
     print("Preparing plots of paper.")
-    Combined_TPCF(save=True,method='masked')
-    # Combined_TPCF_allclass(save=True,method='masked')
-    # Combined_TPCF_Ages(save=True,method='masked',age_group='young')
+    #Combined_TPCF(save=True,method='masked')
+    #Combined_TPCF_CompareAges(save=True,method='masked')
+    #Combined_TPCF_allclass(save=True,method='masked')
+    #Combined_TPCF_Ages(save=True,method='masked',age_group='young')
     #Combined_TPCF_Ages(save=True,method='masked',age_group='old')
-    #Combined_Clusters(save=True,method='masked')
-    # Scatter_Correlations(save=True,method='masked')
+    Combined_Clusters(save=True,method='masked')
+    #Scatter_Correlations(save=True,method='masked')
 
