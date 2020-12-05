@@ -51,7 +51,7 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
         else:
             raise myError("Method not recognised.")
 
-    if(function not in ['piecewise','singlepl','best']):
+    if(function not in ['piecewise','singlepl','best','singletrunc']):
         raise ValueError("Function should be either piecewise or singlepl or best.")
 
     i,j = 0,0            
@@ -78,8 +78,10 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
         if(galaxy_function == 'piecewise'):
             
             sampler = loadObj(galaxy_dir+'/PiecePL_MCMC/'+'MCMC_sampler')
-        else :
+        elif(galaxy_function == 'singlepl') :
             sampler = loadObj(galaxy_dir+'/SinglePL_MCMC/'+'MCMC_sampler')
+        elif(galaxy_function == 'singletrunc') :
+            sampler = loadObj(galaxy_dir+'/SingleTrunc_MCMC/'+'MCMC_sampler')
             
         
         samples = sampler.flatchain
@@ -96,58 +98,67 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
         corr_fit = galaxy_class.corr[indices].astype(np.float)
         dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
         separation_bins = separation_bins[indices].astype(np.float)
+            
+        axs[i,j].set_yscale('log')
+        axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
+            fmt='.-')
+        ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
         
-        try:
-            
-            axs[i,j].set_yscale('log')
-            axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
-                fmt='.-')
-            ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
-            
-            #Fit plot
-            if(galaxy_function == 'piecewise'):
-                break_theta = np.exp(galaxy_class.fit_values[3])
-                break_theta_error = np.exp(galaxy_class.fit_errors[3])
-                axs[i,j].plot(plot_points,np.exp(linear_function(plot_points,galaxy_class.fit_values[0],
-                    galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3])),
-                    ls='--',label='fit')
-                axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
-                    label=r'$\alpha_1 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[1],galaxy_class.fit_errors[1]))
-                axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
-                    label=r'$\alpha_2 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[2],galaxy_class.fit_errors[2]))
-                axs[i,j].axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
-                    break_theta_error))
-            else:
-
-                axs[i,j].plot(plot_points,np.exp(onepowerlaw_function(plot_points,galaxy_class.fit_values[0],
-                galaxy_class.fit_values[1])),
+        #Fit plot
+        if(galaxy_function == 'piecewise'):
+            break_theta = np.exp(galaxy_class.fit_values[3])
+            break_theta_error = np.exp(galaxy_class.fit_errors[3])
+            axs[i,j].plot(plot_points,np.exp(linear_function(plot_points,galaxy_class.fit_values[0],
+                galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3])),
                 ls='--',label='fit')
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+                label=r'$\alpha_1 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[1],galaxy_class.fit_errors[1]))
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+                label=r'$\alpha_2 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[2],galaxy_class.fit_errors[2]))
+            axs[i,j].axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
+                break_theta_error))
+        elif(function == 'singlepl'):
 
-                axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
-                    label=r'$\alpha_1 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[1],
-                        galaxy_class.fit_errors[1]))
+            axs[i,j].plot(plot_points,np.exp(onepowerlaw_function(plot_points,galaxy_class.fit_values[0],
+            galaxy_class.fit_values[1])),
+            ls='--',label='fit')
 
-            #Plot stuff
-            #X-labels only on bottom row
-            if(i==2):
-                axs[i,j].set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
-            #Y-labels only on left column
-            if(j == 0):
-                axs[i,j].set_ylabel(r"$\omega_{\mathrm{LS}}\left(\theta \right)$")
-            axs[i,j].set_xscale('log')
-            axs[i,j].callbacks.connect("xlim_changed", plot_class.axs_to_parsec)
-            axs[i,j].legend()
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+                label=r'$\alpha_1 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[1],
+                    galaxy_class.fit_errors[1]))
+        elif(function == 'singletrunc'):
+            axs[i,j].plot(plot_points,np.exp(linear_truncation(plot_points,galaxy_class.fit_values[0],
+                galaxy_class.fit_values[1],galaxy_class.fit_values[2])),
+                ls='--',label='fit')
+            theta_c = galaxy_class.fit_values[2]
+            theta_c_error = galaxy_class.fit_errors[2]
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+            label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[1],
+                galaxy_class.fit_errors[1]))
+            axs[i,j].axvline(theta_c,ls=':',label=r'$\theta_c = {:2.1f} \pm {:2.1f}$'.format(theta_c,
+                theta_c_error))
 
-            #Secondary axis label only for top row
-            if(i==0):
-                ax2.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
+        #Plot stuff
+        #X-labels only on bottom row
+        if(i==2):
+            axs[i,j].set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
+        #Y-labels only on left column
+        if(j == 0):
+            axs[i,j].set_ylabel(r"$\omega_{\mathrm{LS}}\left(\theta \right)$")
+        axs[i,j].set_xscale('log')
+        axs[i,j].callbacks.connect("xlim_changed", plot_class.axs_to_parsec)
+        axs[i,j].legend()
 
-            
-            axs[i,j].text(0.1,0.1,r'$\mathrm{NGC}$'+' '+r'${}$'.format(galaxy_name.split('_')[1]),
-                transform=axs[i,j].transAxes)
+        #Secondary axis label only for top row
+        if(i==0):
+            ax2.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
 
-        except:
-            print("Cannot plot TPCF") 
+        
+        axs[i,j].text(0.1,0.1,r'$\mathrm{NGC}$'+' '+r'${}$'.format(galaxy_name.split('_')[1]),
+            transform=axs[i,j].transAxes)
+
+        
+        
 
         
 
@@ -163,6 +174,8 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
             filename = outdir+'Combined_TPCF_MCMC_Piecewise.pdf'
         elif(function == 'singlepl') :
             filename = outdir+'Combined_TPCF_MCMC_SinglePL.pdf'
+        elif(function == 'singletrunc'):
+            filename = outdir+'Combined_TPCF_MCMC_SingleTrunc.pdf'
         else:
             filename = outdir+'Combined_TPCF_MCMC_Best.pdf'
         plt.savefig(filename,bbox_inches='tight')
@@ -339,7 +352,7 @@ if __name__ == "__main__":
         help='Function to use to fit.')
 
     args = vars(ap.parse_args())
-    if(args['function'] not in ['piecewise','singlepl','best']):
+    if(args['function'] not in ['piecewise','singlepl','singletrunc','best']):
         raise ValueError("Wrong function type.")
 
     method = args['method'].lower()
@@ -349,10 +362,7 @@ if __name__ == "__main__":
 
     galaxy_input = args['galaxy'].upper()
     if(galaxy_input == 'ALL'):
-
-        for galaxy_name in list_of_galaxies:
-
-            
+        #for galaxy_name in list_of_galaxies:
             #fit_MCMC_galaxy(galaxy_name,method=method,function=args['function'])
         plot_MCMCfitsall(save=True,method=method,function=args['function'])
 
