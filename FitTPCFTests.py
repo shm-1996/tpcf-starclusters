@@ -2,7 +2,10 @@ from header import *
 from Galaxy import *
 from Plot_Class import *
 from MCMCfit import *
-from CreateTables import compare_AIC
+from CreateTables import compare_AIC, compare_AICc, compare_BIC
+
+#Axes limits in parsec
+global_axes_limits = [8,1.e4]
 
 
 def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_radial',function='piecewise'):
@@ -51,7 +54,7 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
         else:
             raise myError("Method not recognised.")
 
-    if(function not in ['piecewise','singlepl','best','singletrunc']):
+    if(function not in ['piecewise','singlepl','best','singletrunc','doubletrunc']):
         raise ValueError("Function should be either piecewise or singlepl or best.")
 
     i,j = 0,0            
@@ -65,15 +68,21 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
 
         galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
 
+        #Find no of samples to which MCMC was fitted
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        nsamples = np.size(corr_fit)
 
 
         if(function == 'best'):
             #Choose best function based on AIC value
-            AIC_single,AIC_piecewise = compare_AIC(galaxy_name)
-            if(AIC_single<AIC_piecewise):
-                galaxy_function = 'singlepl'
-            else:
-                galaxy_function = 'piecewise'
+            AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples)
+            galaxy_functions = ['singlepl','piecewise','singletrunc','doubletrunc']
+            galaxy_AIC = [AIC_single,AIC_piecewise,AIC_single_trunc,AIC_double_trunc] 
+            galaxy_function = galaxy_functions[np.argmin(galaxy_AIC)] 
+        else:
+            galaxy_function = function
+
 
         if(galaxy_function == 'piecewise'):
             
@@ -82,6 +91,8 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
             sampler = loadObj(galaxy_dir+'/SinglePL_MCMC/'+'MCMC_sampler')
         elif(galaxy_function == 'singletrunc') :
             sampler = loadObj(galaxy_dir+'/SingleTrunc_MCMC/'+'MCMC_sampler')
+        elif(galaxy_function == 'doubletrunc') :
+            sampler = loadObj(galaxy_dir+'/PiecewiseTrunc_MCMC/'+'MCMC_sampler')
             
         
         samples = sampler.flatchain
@@ -101,7 +112,19 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
             
         axs[i,j].set_yscale('log')
         axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
-            fmt='.-')
+            fmt='.-',lw=0.2)
+        
+        #Set X-Axis Limits
+        distance = galaxy_class.distance*const.Parsec*1.e6
+        axs_limits = [0.0,0.0]
+        axs_limits[0] =  global_axes_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
+        axs_limits[1] =  global_axes_limits[1]*const.Parsec/distance*u.radian.to(u.arcsec)
+        axs[i,j].set_xlim(axs_limits[0],axs_limits[1])
+
+        ls = '-'
+        lw = 0.2
+        lc = 'k'
+
         ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
         
         #Fit plot
@@ -110,26 +133,28 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
             break_theta_error = np.exp(galaxy_class.fit_errors[3])
             axs[i,j].plot(plot_points,np.exp(linear_function(plot_points,galaxy_class.fit_values[0],
                 galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3])),
-                ls='--',label='fit')
+                ls=ls,label='fit',color=lc,lw=lw)
             axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
                 label=r'$\alpha_1 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[1],galaxy_class.fit_errors[1]))
             axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
                 label=r'$\alpha_2 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[2],galaxy_class.fit_errors[2]))
             axs[i,j].axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
                 break_theta_error))
-        elif(function == 'singlepl'):
+        
+        elif(galaxy_function == 'singlepl'):
 
             axs[i,j].plot(plot_points,np.exp(onepowerlaw_function(plot_points,galaxy_class.fit_values[0],
             galaxy_class.fit_values[1])),
-            ls='--',label='fit')
+            label='fit',ls=ls,lw=lw,color=lc)
 
             axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
                 label=r'$\alpha_1 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[1],
                     galaxy_class.fit_errors[1]))
-        elif(function == 'singletrunc'):
+        
+        elif(galaxy_function == 'singletrunc'):
             axs[i,j].plot(plot_points,np.exp(linear_truncation(plot_points,galaxy_class.fit_values[0],
                 galaxy_class.fit_values[1],galaxy_class.fit_values[2])),
-                ls='--',label='fit')
+                label='fit',ls=ls,lw=lw,color=lc)
             theta_c = galaxy_class.fit_values[2]
             theta_c_error = galaxy_class.fit_errors[2]
             axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
@@ -137,6 +162,32 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
                 galaxy_class.fit_errors[1]))
             axs[i,j].axvline(theta_c,ls=':',label=r'$\theta_c = {:2.1f} \pm {:2.1f}$'.format(theta_c,
                 theta_c_error))
+        
+        elif(galaxy_function == 'doubletrunc'):
+            axs[i,j].plot(plot_points,np.exp(piecewise_truncation(plot_points,galaxy_class.fit_values[0],
+                    galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3],
+                    galaxy_class.fit_values[4])),
+                    label='fit',ls=ls,lw=lw,color=lc)
+            break_theta = np.exp(galaxy_class.fit_values[3])
+            break_theta_error = np.exp(galaxy_class.fit_errors[3])
+            theta_c = galaxy_class.fit_values[4]
+            theta_c_error = galaxy_class.fit_errors[4]
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+            label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[1],
+                galaxy_class.fit_errors[1]))
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+                label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[2],
+                galaxy_class.fit_errors[2]))
+            axs[i,j].axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
+                break_theta_error))
+
+            axs[i,j].axvline(theta_c,ls=':',label=r'$\theta_c = {:2.1f} \pm {:2.1f}$'.format(theta_c,
+                theta_c_error))
+
+            
+
+
+
 
         #Plot stuff
         #X-labels only on bottom row
@@ -176,7 +227,9 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
             filename = outdir+'Combined_TPCF_MCMC_SinglePL.pdf'
         elif(function == 'singletrunc'):
             filename = outdir+'Combined_TPCF_MCMC_SingleTrunc.pdf'
-        else:
+        elif(function == 'doubletrunc'):
+            filename = outdir+'Combined_TPCF_MCMC_PiecewiseTrunc.pdf'
+        elif(function == 'best'):
             filename = outdir+'Combined_TPCF_MCMC_Best.pdf'
         plt.savefig(filename,bbox_inches='tight')
         plt.close()
@@ -349,10 +402,11 @@ if __name__ == "__main__":
     ap.add_argument('-galaxy',action='store',type=str,default=None,
         help = 'Galaxy for which tpcf to be computed. By default done for all.')
     ap.add_argument('-function',action='store',type=str,default='piecewise',
-        help='Function to use to fit.')
+        help='Function to use to fit. Options are "piecewise", "singlepl","singletrunc", and "doubletrunc".')
+    ap.add_argument('-fit',action='store_true',help='Flag to fit with an MCMC.')
 
     args = vars(ap.parse_args())
-    if(args['function'] not in ['piecewise','singlepl','singletrunc','best']):
+    if(args['function'] not in ['piecewise','singlepl','singletrunc','doubletrunc','best']):
         raise ValueError("Wrong function type.")
 
     method = args['method'].lower()
@@ -362,8 +416,9 @@ if __name__ == "__main__":
 
     galaxy_input = args['galaxy'].upper()
     if(galaxy_input == 'ALL'):
-        #for galaxy_name in list_of_galaxies:
-            #fit_MCMC_galaxy(galaxy_name,method=method,function=args['function'])
+        if(args['fit'] is True):
+            for galaxy_name in list_of_galaxies:
+                fit_MCMC_galaxy(galaxy_name,method=method,function=args['function'])
         plot_MCMCfitsall(save=True,method=method,function=args['function'])
 
     else :

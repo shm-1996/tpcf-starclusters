@@ -662,4 +662,11 @@ def onepowerlaw_function(theta,A1,alpha_1) :
 def linear_truncation(theta,A1,alpha_1,theta_c) :
     function = A1 + alpha_1*np.log(theta) - theta/theta_c
     return function    
+
+def piecewise_truncation(theta,A_1,alpha_1,alpha_2,beta,theta_c):
+    A_2 = A_1 
+    function = np.piecewise(theta,[np.log(theta)<beta],[lambda theta :  A_1 + alpha_1 * np.log(theta), 
+        lambda theta : A_2 + (alpha_1-alpha_2)*beta + alpha_2*np.log(theta) - theta/theta_c])
+    return function
+
         

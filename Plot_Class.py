@@ -38,7 +38,7 @@ class myPlot():
         dcorr_fit = self.galaxy.dcorr[indices].astype(np.float)
         separation_bins = separation_bins[indices].astype(np.float)
 
-        if(function not in ['piecewise','smooth','singlepl','singletrunc']):
+        if(function not in ['piecewise','smooth','singlepl','singletrunc','doubletrunc']):
             raise ValueError("This funtional form does not exist.")
 
         
@@ -86,17 +86,30 @@ class myPlot():
                     ls='--',label='fit')
                 theta_c = self.galaxy.fit_values[2]
                 theta_c_error = self.galaxy.fit_errors[2]
+            elif(function == 'doubletrunc'):
+                axs.plot(plot_points,np.exp(piecewise_truncation(plot_points,self.galaxy.fit_values[0],
+                    self.galaxy.fit_values[1],self.galaxy.fit_values[2],self.galaxy.fit_values[3],
+                    self.galaxy.fit_values[4])),
+                    ls='--',label='fit')
+                break_theta = np.exp(self.galaxy.fit_values[3])
+                break_theta_error = np.exp(self.galaxy.fit_errors[3])
+                theta_c = self.galaxy.fit_values[4]
+                theta_c_error = self.galaxy.fit_errors[4]
 
                 
             axs.plot(separation_bins,corr_fit,lw=0.0,
                 label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[1],self.galaxy.fit_errors[1]))
             
-            if(function in ['piecewise','smooth']):
+            if(function in ['piecewise','smooth','doubletrunc']):
                 axs.plot(separation_bins,corr_fit,lw=0.0,
                     label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(self.galaxy.fit_values[2],self.galaxy.fit_errors[2]))
                 axs.axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
                     break_theta_error))
             elif(function == 'singletrunc'):
+                axs.axvline(theta_c,ls=':',label=r'$\theta_c = {:2.1f} \pm {:2.1f}$'.format(theta_c,
+                    theta_c_error))
+            
+            if(function == 'doubletrunc'):
                 axs.axvline(theta_c,ls=':',label=r'$\theta_c = {:2.1f} \pm {:2.1f}$'.format(theta_c,
                     theta_c_error))
 

@@ -26,7 +26,7 @@ def model(params,data):
 def lnprior(params,distance,bins):
 #    A_1,A_2,alpha_1,alpha_2,beta = params
     A_1,alpha_1,alpha_2,beta = params
-    #beta_limits = [50.0, 300.0]
+    #beta_limits = [50.0, 1000.0]
     #beta_limits[0]= beta_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
     #beta_limits[1] = beta_limits[1]*const.Parsec/distance*u.radian.to(u.arcsec)
     beta_limits = [np.min(bins),np.max(bins)]
@@ -92,7 +92,8 @@ def model_linear_truncation(params,data) :
 #2. Priors
 def lnprior_lineartruncation(params,bins):
     A_1,alpha_1,theta_c = params
-    thetac_limits = [np.min(bins),np.max(bins)]
+    thetac_limits = [np.min(bins),np.max(bins)*5.0]
+    beta_limits = [np.min(bins),np.max(bins)]
     if(-10<A_1<10 and 
        -5<alpha_1<0 and thetac_limits[0]<theta_c<thetac_limits[1])  :
         return 0
@@ -110,6 +111,46 @@ def lnprob_lineartruncation(params, bins,data,data_error):
 def lnlike_lineartruncation(params,bins,data,data_error):
 #    data_model = model_1(params,bins)
     data_model = model_linear_truncation(params,bins)
+    log_likelihood = -1/2. * np.sum(((data-data_model)/data_error)**2)
+    return log_likelihood
+################################################################################################
+# Double Power-law with exponential truncation
+def model_piecewise_truncation(params,data) :
+    #Parameters to fit
+    A_1,alpha_1,alpha_2,beta,theta_c = params
+    #A_2 in terms of A_1 assuming continuity
+    A_2 = A_1
+    function = np.piecewise(data,[np.log(data)<beta],[lambda data :  A_1 + alpha_1 * np.log(data), 
+        lambda data : A_2 + (alpha_1-alpha_2)*beta + alpha_2*np.log(data) - data/theta_c])
+    return function
+
+#2. Priors
+def lnprior_piecewisetruncation(params,distance,bins):
+    A_1,alpha_1,alpha_2,beta,theta_c = params
+    # beta_limits = [np.min(bins),np.max(bins)]
+    beta_limits = [50.0, 500.0]
+    beta_limits[0]= beta_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
+    beta_limits[1] = beta_limits[1]*const.Parsec/distance*u.radian.to(u.arcsec)
+    thetac_limits = [np.min(bins),np.max(bins)*5.0]
+    if(-10<A_1<10 and 
+       -5<alpha_1<0 and -5<alpha_2<0 and 
+       np.log(beta_limits[0])<beta<np.log(beta_limits[1]) and 
+       thetac_limits[0]<theta_c<thetac_limits[1] and theta_c > beta)  :
+        return 0
+    else :
+        return -np.inf
+
+#3. lnprob
+def lnprob_piecewisetruncation(params, bins,data,data_error,distance):
+    lp = lnprior_piecewisetruncation(params,distance,bins)
+    if not np.isfinite(lp):
+        return -np.inf
+    return lp + lnlike_piecewisetruncation(params, bins,data,data_error)
+
+#4. log-likelihoods
+def lnlike_piecewisetruncation(params,bins,data,data_error):
+#    data_model = model_1(params,bins)
+    data_model = model_piecewise_truncation(params,bins)
     log_likelihood = -1/2. * np.sum(((data-data_model)/data_error)**2)
     return log_likelihood
 
@@ -155,7 +196,11 @@ def fit_MCMC_galaxy(galaxy_name,method='masked_radial',function='piecewise'):
     elif(function == 'singletrunc'):
         print("Fitting Single PL with exponential truncation fit in MCMC.")
         fit_MCMC(galaxy_class,save=True,function='singletrunc')
+    elif(function == 'doubletrunc'):
+        print("Fitting Piecewise PL with exponential truncation fit in MCMC.")
+        fit_MCMC(galaxy_class,save=True,function='doubletrunc')
 
+    
 
 def fit_MCMC(galaxy_class,save=False,function='piecewise'):
     """
@@ -171,7 +216,7 @@ def fit_MCMC(galaxy_class,save=False,function='piecewise'):
     """
 
     #Safety check
-    if(function not in ['singlepl','piecewise','singletrunc']):
+    if(function not in ['singlepl','piecewise','singletrunc','doubletrunc']):
         raise ValueError("Function should be either singlepl, piecewise or singletrunc")
 
     #Set directory where results would be saved
@@ -183,6 +228,8 @@ def fit_MCMC(galaxy_class,save=False,function='piecewise'):
         MCMC_directory += '/SinglePL_MCMC'
     elif(function == 'singletrunc'):
         MCMC_directory += '/SingleTrunc_MCMC'
+    elif(function == 'doubletrunc'):
+        MCMC_directory += '/PiecewiseTrunc_MCMC'
 
     MCMC_directory = os.path.abspath(MCMC_directory)
     if(not os.path.exists(MCMC_directory)):
@@ -196,8 +243,8 @@ def fit_MCMC(galaxy_class,save=False,function='piecewise'):
         
         #Modify initial guess to be in b/w 50 & 300 pc
         distance = galaxy_class.distance*const.Parsec*1.e6
-        beta_limits[0]= beta_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
-        beta_limits[1] = beta_limits[1]*const.Parsec/distance*u.radian.to(u.arcsec)
+        # beta_limits[0]= beta_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
+        # beta_limits[1] = beta_limits[1]*const.Parsec/distance*u.radian.to(u.arcsec)
         initial_guess[3] = np.log((beta_limits[0]+beta_limits[1])/2.)
 
     elif(function == 'singlepl'):
@@ -205,6 +252,11 @@ def fit_MCMC(galaxy_class,save=False,function='piecewise'):
     elif(function == 'singletrunc'):
         initial_guess = galaxy_class.fit_values[0],galaxy_class.fit_values[1],\
 np.exp(galaxy_class.fit_values[3])
+
+    elif(function == 'doubletrunc'):
+        distance = galaxy_class.distance*const.Parsec*1.e6
+        initial_guess = galaxy_class.fit_values[0],galaxy_class.fit_values[1],\
+galaxy_class.fit_values[2],np.exp(galaxy_class.fit_values[3]),np.exp(galaxy_class.fit_values[3])*2.0
 
 
     #Properties of MCMC
@@ -236,6 +288,10 @@ np.exp(galaxy_class.fit_values[3])
         sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_lineartruncation, 
                                     args=(separation_bins,np.log(corr_fit),
                                          dcorr_fit/corr_fit))
+    elif(function == 'doubletrunc'):
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_piecewisetruncation, 
+                                    args=(separation_bins,np.log(corr_fit),
+                                         dcorr_fit/corr_fit,distance))
 
     #Run MCMC
     print("Running burn-in...")
@@ -245,22 +301,27 @@ np.exp(galaxy_class.fit_values[3])
     print("Running production...")
     pos, prob, state = sampler.run_mcmc(p0, 10000,progress=True)
 
-    #Get samples
-    samples = sampler.flatchain
+    print("MCMC operation completed....")
 
     if(save):
-        saveObj(sampler,MCMC_directory+'/MCMC_sampler') 
+        saveObj(sampler,MCMC_directory+'/MCMC_sampler')
+
+    sampler = loadObj(MCMC_directory+'/MCMC_sampler')
+    #Get samples
+    samples = sampler.flatchain
 
     #Diagnostic plots
     print("Making diagnostic plots...")
 
     #Diagnostic Plot 1 : Corner Plot
     if(function == 'piecewise'):
-        labels = [r'$A_1$',r'$\alpha_1$',r'$\alpha_2$',r'$\beta$']
+        labels = [r'$A_1$',r'$\alpha_1$',r'$\alpha_2$',r'$\beta$']        
     elif(function == 'singlepl'):
         labels = [r'$A_1$',r'$\alpha_1$']
     elif(function == 'singletrunc'):
         labels = [r'$A_1$',r'$\alpha_1$',r'$\theta_c$']
+    elif(function == 'doubletrunc'):
+        labels = [r'$A_1$',r'$\alpha_1$',r'$\alpha_2$',r'$\beta$',r'$\theta_c$']
 
     fig = corner.corner(samples,show_titles=True,labels=labels,
         plot_datapoints=True,quantiles=[0.16, 0.5, 0.84])
@@ -307,6 +368,9 @@ np.exp(galaxy_class.fit_values[3])
                 alpha=0.1)
         elif(function == 'singletrunc'):
             axs.plot(separation_bins,np.exp(model_linear_truncation(sample,separation_bins)),
+             alpha=0.1)
+        elif(function == 'doubletrunc'):
+            axs.plot(separation_bins,np.exp(model_piecewise_truncation(sample,separation_bins)),
              alpha=0.1)            
 
     axs.errorbar(separation_bins,galaxy_class.corr,yerr=galaxy_class.dcorr,
@@ -334,7 +398,7 @@ np.exp(galaxy_class.fit_values[3])
     pl.plot_TPCF(save=save,filename=MCMC_directory+'/TPCF_MCMC.pdf',
         function=function)
 
-    print("MCMC operation completed....")
+    return
 
 
 
