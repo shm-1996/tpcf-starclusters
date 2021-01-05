@@ -952,6 +952,134 @@ def Compare_TPCFMethods(save=False,outdir='../Results/',indir=None,method='maske
     else :
         plt.show()
 
+def Combined_Clusters_BreakView(save=False,outdir='../Results/',indir=None,method='masked'):
+
+    print("Plotting spatial positions of clusters in all galaxies")
+
+    #Create figure and axs instance
+    fig = plt.figure(figsize=(20,16),constrained_layout=True)
+
+    if(indir == None):
+        indir = os.path.abspath('../Results/Galaxies/')+'/'
+        method_dir = ''
+    else :
+        method_dir = None
+
+    #Directories
+    indir = os.path.abspath(indir)+'/'
+    outir = os.path.abspath(outdir)+'/'
+
+    if(method_dir is not None):
+        if(method.upper() == 'MASKED'):
+            method_dir = 'Masked/'
+        elif(method.upper() == 'UNIFORM'):
+            method_dir = 'Uniform/'
+        elif(method.upper() == 'MASKED_RADIAL'):
+            method_dir = 'Masked_Radial/'
+        else:
+            raise myError("Method not recognised.")
+
+
+    i,j = 0,0
+    #Loop through the galaxies
+    for galaxy_name in list_of_galaxies:
+        if(method_dir == None):
+            galaxy_dir = indir+galaxy_name+'/'            
+        else :
+            galaxy_dir = indir+galaxy_name+'/'+method_dir
+
+        galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
+        plot_class = myPlot(galaxy_class)
+        ages = galaxy_class.get_cluster_ages()
+        galaxy_class.get_ra_dec()
+        cmap = cmr.waterlily
+
+        ax1 = plt.subplot2grid((3,4),(i,j),fig=fig)
+
+        x = galaxy_class.ra*3600.0
+        y = galaxy_class.dec*3600.0
+
+        #Get central pixel values
+        xcen = (np.min(x)+np.max(x))/2.
+        ycen = (np.min(y)+np.max(y))/2.
+
+        #Scale offset around bounding box to ~ 5% of axes width
+        offset_x = (np.max(x)-np.min(x))*0.05
+        offset_y = (np.max(y)-np.min(y))*0.05
+
+        xmin,xmax = np.min(x)-offset_x-xcen, np.max(x)+offset_x-xcen
+        ymin,ymax = np.min(y)-offset_y-ycen, np.max(y)+offset_y-ycen
+        ax1.set_xlim(xmin,xmax)
+        ax1.set_ylim(ymin,ymax)
+
+        im1 = ax1.scatter(x-xcen,y-ycen,s=10,c=np.log10(ages),alpha=0.5,cmap=cmap,lw=0.3)
+        cbar = fig.colorbar(im1,ax = ax1,use_gridspec=False,
+                            orientation='vertical',pad=0.00,aspect=30)
+        
+
+        # #Draw 100 arcsec scale bar
+        
+        #No of pixels in axes
+        total_pixels = np.int(np.floor(ax1.transData.transform((xmax,ymax))[0]) - \
+        np.floor(ax1.transData.transform((xmin,ymin))[0]))
+
+        length_per_pixel = (xmax-xmin)/(total_pixels)
+        #Convert to parsec 
+        length_per_pixel = plot_class.sep_to_pc(length_per_pixel)
+
+        #Scale bar of 50 arcsec
+        length = plot_class.sep_to_pc(50)
+        no_pixels = np.abs(length/length_per_pixel)
+        no_pixels = no_pixels/total_pixels
+
+        scale = lines.Line2D([0.8,0.8+no_pixels],[0.1],
+                                         lw=1,color='black',
+                                        transform=ax1.transAxes)
+        ax1.add_line(scale)
+        ax1.annotate(r'$50^{\prime \prime} = %d \, \mathrm{pc}$'%length,(0.65,0.15),xycoords='axes fraction',
+                            fontsize=12)
+        
+        #Draw cutoff scale as a circular patch
+        cutoff_scale,cutoff_error = Get_Cutoff_Scale(galaxy_class,function='best')
+        
+        length = plot_class.sep_to_pc(cutoff_scale)
+        no_pixels = np.abs(length/length_per_pixel)
+        no_pixels = no_pixels/total_pixels
+        cutoff = mpl.patches.Circle((0.4,0.8),radius=cutoff_scale,
+                                   fill=False,ls='--',lw=2.0,color='#F9004A')
+        ax1.add_artist(cutoff)
+        
+
+
+        if(i==2):
+            ax1.set_xlabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
+
+        if(j==0):
+            ax1.set_ylabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
+
+        if(j==3):    
+            cbar.ax.set_ylabel(r"$\log_{10} \, \mathrm{Age} \, (\mathrm{yr})$",
+                rotation=90,labelpad=5,fontsize=20)
+        
+        ax1.text(0.1,0.1,r'$\mathrm{NGC}$'+' '+r'${}$'.format(galaxy_name.split('_')[1]),
+            transform=ax1.transAxes)
+
+        #Get position of subplot
+        #Get position of subplot
+        j +=1
+        if(j==4):
+            j = 0
+            i +=1
+
+
+    if(save):
+        filename = outdir+'Combined_Clusters_BreakView.pdf'
+        plt.savefig(filename,bbox_inches='tight')
+        plt.close()
+    else :
+        plt.show()
+
+
 
 
 
