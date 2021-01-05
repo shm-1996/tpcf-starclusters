@@ -8,6 +8,9 @@ from header import *
 from Plot_Class import *
 from CreateTables import compare_AIC
 
+#Axes limits in parsec
+global_axes_limits = [8,1.e4]
+
 def Combined_TPCF(save=False,outdir='../Results/',indir=None,method='masked'):
     """
     Plot the TPCF of all galaxies as a combined figure.
@@ -76,6 +79,14 @@ def Combined_TPCF(save=False,outdir='../Results/',indir=None,method='masked'):
             
         axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
             fmt='.-')
+
+        #Set X-Axis Limits
+        distance = galaxy_class.distance*const.Parsec*1.e6
+        axs_limits = [0.0,0.0]
+        axs_limits[0] =  global_axes_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
+        axs_limits[1] =  global_axes_limits[1]*const.Parsec/distance*u.radian.to(u.arcsec)
+        axs[i,j].set_xlim(axs_limits[0],axs_limits[1])
+
         ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
         
         #Fit plot
@@ -947,10 +958,10 @@ def Compare_TPCFMethods(save=False,outdir='../Results/',indir=None,method='maske
 if __name__ == "__main__":
     print("Preparing plots of paper.")
     #Combined_TPCF(save=True,method='masked')
-    #Combined_TPCF_CompareAges(save=True,method='masked')
+    Combined_TPCF_CompareAges(save=True,method='masked')
     #Combined_TPCF_allclass(save=True,method='masked')
     #Combined_TPCF_Ages(save=True,method='masked',age_group='young')
     #Combined_TPCF_Ages(save=True,method='masked',age_group='old')
-    Combined_Clusters(save=True,method='masked')
+    #Combined_Clusters(save=True,method='masked')
     #Scatter_Correlations(save=True,method='masked')
 
