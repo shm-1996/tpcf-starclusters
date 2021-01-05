@@ -54,12 +54,12 @@ def tpcf_galaxy(galaxy_name,method='masked_radial',function='piecewise',outdir=N
     else :
         print("Overwrite flag is provided. Computing and overwriting TPCF.")
 
-
+    
 
     #Compute and fit TPCF for all classes
     #TODO: Implement this
     galaxy_class.Compute_TPCF(verbose=True,save=True,random_method=method)
-    galaxy_class.fit_power_law(function=function,use_bounds=True)
+    galaxy_class.fit_power_law(function=function,use_bounds=False)
 
     #Compute TPCF for combined
     # try:
@@ -69,7 +69,6 @@ def tpcf_galaxy(galaxy_name,method='masked_radial',function='piecewise',outdir=N
     #     print("TPCF could not be computed/not fitted for galaxy {}.".format(galaxy_class.name))
     #Fit power law
     
-
 
     return galaxy_class
 
@@ -135,14 +134,13 @@ def tpcf_allgalaxies(method,function,overwrite=False,save=False) :
         galaxy_class = tpcf_galaxy(galaxy_name,method=method,function=function,overwrite=overwrite)
         plot_class = myPlot(galaxy_class)
         plots_galaxy(plot_class,method=method,function=function,save=save)
-        
         #Save galaxy class info as pickle file
         path_exists = os.path.isfile(galaxy_class.outdir+
             '{}_summary.pkl'.format(galaxy_class.name))
         if(overwrite is True or path_exists is False):
             print("Saving class object of {} as pickle file.".format(galaxy_class.name))
             saveObj(galaxy_class,galaxy_class.outdir+'{}_summary'
-                .format(galaxy_class.name))
+                .format(galaxy_class.name))            
         print("##############################################################")
         print("\n\n")
 
@@ -213,7 +211,7 @@ if __name__ == "__main__":
 
 
         else:
-            raise myError("The provided galaxy is not in the list of galaxies"+
+            raise myError("The provided galaxy {} is not in the list of galaxies".format(galaxy_name)+
                 " for which cluster catalogs are available with LEGUS.")
 
    
