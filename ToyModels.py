@@ -8,7 +8,8 @@ import warnings
 import numpy as np
 from sklearn.neighbors import BallTree
 from astroML.utils import check_random_state
-from TPCF import linear_function,onepowerlaw_function
+from TPCF import linear_function,onepowerlaw_function,linear_truncation
+from matplotlib.transforms import Bbox
 
 # Check if scikit-learn's two-point functionality is available.
 # This was added in scikit-learn version 0.14
@@ -19,6 +20,7 @@ except ImportError:
     import warnings
     sklearn_has_two_point = False
 
+#TPCF Functions
 
 def uniform_sphere(RAlim, DEClim, size=1):
     """Draw a uniform sample on a sphere
@@ -390,8 +392,8 @@ def bootstrap_two_point_angular(ra, dec, bins, method='standard',
 
     return corr, corr_err, bootstraps
 
-
-
+#############################################################################################
+# Toy Model 1 : Spiral Arms
 def Create_Spiral(r_thickness,Pitch=10.0,r0=1.0,nsamples=10000):
 
     #Parameters
@@ -477,6 +479,9 @@ def Analyse_Spiral(thickness,Pitch=10,compute_TPCF=False,save=False):
     else:
         plt.show()
 
+
+#############################################################################################
+# Toy Model 2 : Discrete Star Forming Regions 
 def Create_SF(r_SF,n_regions=30,n_points=100):
     xr = np.zeros((n_regions,n_points))
     yr = np.zeros((n_regions,n_points))
@@ -576,6 +581,9 @@ def Analyse_SF(r_SF,n_regions=30,n_points=100,compute_TPCF=False,
     else:
         plt.show()
 
+#############################################################################################
+# Toy Model 3 : Discrete Star Forming Regions with overlying Poisson distribution         
+
 def Create_Poisson(lambda_poisson=10000,xMin=0.0,xMax=1.0,yMin=0.0,yMax=1.0):
     #Simulation window parameters
     xDelta=xMax-xMin;yDelta=yMax-yMin; #rectangle dimensions
@@ -663,110 +671,7 @@ def Analyse_SF_Poisson(r_SF,poisson_fraction=1.0,
     else:
         plt.show()
 
-
-def Create_Fractal(fractal_dim,baselevel=2,max_level=10):
-
-    prob = 2**(fractal_dim-2)
-    delta = 1./(2**baselevel)
-    # xfractal, yfractal = np.meshgrid(np.arange(delta/2.,1.0,
-    #                         delta),np.arange(delta/2.,1.0,delta),indexing='xy')
-    # xfractal,yfractal = xfractal.flatten(),yfractal.flatten()
-    delta = 1./(2**(baselevel+1))
-    current_level_x, current_level_y = np.meshgrid(np.arange(delta/2.,1.0,
-                            delta),np.arange(delta/2.,1.0,delta),indexing='xy')
-    current_level_x, current_level_y = current_level_x.flatten(),current_level_y.flatten()
-    for level in range(baselevel+1,max_level):
-        nactive = np.size(current_level_x)
-        rand_no = np.random.uniform(size=nactive)
-        new_level_x = []
-        new_level_y = []
-        #Loop over active regions and add regions if condition
-        #satisfied 
-        for region in range(0,nactive):
-            if(rand_no[region]<prob): 
-                #Add to fractal points
-                # xfractal = np.append(current_level_x[region],xfractal)
-                # yfractal = np.append(current_level_y[region],yfractal)
-
-                #Add to next level active regions to loop over
-
-
-                #Create 4 new centres for this region
-                delta = 1./(2**(level+1))/2.
-                new_x = [current_level_x[region]-delta,
-                        current_level_x[region]+delta,
-                        current_level_x[region]-delta,
-                        current_level_x[region]+delta]
-                new_y = [current_level_y[region]+delta,
-                        current_level_y[region]+delta,
-                        current_level_y[region]-delta,
-                        current_level_y[region]-delta]
-                new_level_x = np.append(new_x,new_level_x)
-                new_level_y = np.append(new_y,new_level_y)
-
-        current_level_x = new_level_x
-        current_level_y = new_level_y 
-        
-    
-    return new_level_x,new_level_y    
-
-def Compute_TPCF_Fractal(xfractal,yfractal,no_bins=20,limits=0.0):
-    
-    indices_1 = np.logical_and(xfractal>limits,yfractal>limits)
-    indices_2 = np.logical_and(xfractal<1.-limits,yfractal<1.-limits)
-    indices = np.logical_and(indices_1,indices_2)
-    bins = np.logspace(np.log10(0.01),np.log10(0.25),no_bins)
-    data = np.asarray((xfractal[indices],yfractal[indices]),order='F').T
-    corr_lz,dcorr_lz = bootstrap_two_point(data, bins, Nbootstrap=30,
-                            method='landy-szalay', return_bootstraps=False,
-                            random_state=None)
-    return bins,corr_lz,dcorr_lz
-
-def Analyse_Fractal(fractal_dim,limits=0.0,no_bins=40,max_level=10):
-
-    #Generate Fractal 
-    xfractal,yfractal = Create_Fractal_New(1.3)
-    bins,corr_lz,dcorr_lz = Compute_TPCF_Fractal(xfractal,yfractal,limits=limit)
-    save_obj = [xfractal,yfractal,bins,corr_lz,dcorr_lz]
-    saveObj(save_obj,'../Toy_Models/Fractals/D_{}'.format(int(fractal_dim*10)))
-
-    #Plot Positions
-    plt.clf()
-    plt.scatter(xfractal,yfractal,s=0.05,c='blue')
-    plt.savefig('../Toy_Models/Fractals/Pos_D_{}'.format(int(fractal_dim*10)),
-                bbox_inches='tight')
-    plt.close()
-
-    #Fit and Plot TPCF
-    separation_bins = (bins[1:]+bins[:-1])/2.
-    indices = np.where(corr_lz>0.0)
-    dcorr_lz = dcorr_lz[indices]
-    separation_bins = separation_bins[indices]
-    corr_lz = corr_lz[indices]
-    plt.errorbar(separation_bins,1+corr_lz,yerr=dcorr_lz,
-                 fmt='.-',lw=0.2)
-
-    #Fit line to this
-    
-    plt.clf()
-    popt,pcov = curve_fit(onepowerlaw_function,separation_bins,
-                        np.log(1+corr_lz),sigma=dcorr_lz/corr_lz)
-    perr= np.sqrt(np.diag(pcov))
-
-    plt.plot(separation_bins,np.exp(onepowerlaw_function(separation_bins,
-                                                        popt[0],popt[1])),
-            ls='-',lw=0.2,c='k',
-             label=r'$\alpha = {:2.1f} \pm {:3.2f}$'.format(popt[1],perr[1]))
-
-
-
-    plt.xlabel(r"$\Delta x \, (\mathrm{pixels})$")
-    plt.ylabel(r"$1+ \omega_{\mathrm{LS}}\left(\theta \right)$")
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.legend()
-    plt.savefig('../Toy_Models/Fractals/TPCF_D_{}'.format(int(fractal_dim*10)),
-                bbox_inches='tight')
+#############################################################################################
 
 
 def Combined_Spiral_Plots():
