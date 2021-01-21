@@ -15,7 +15,7 @@ class myPlot():
         
         
         
-    def plot_TPCF(self,save=False,function='piecewise',filename=None):
+    def plot_TPCF(self,save=False,function='piecewise',filename=None,omega1=False):
         """
         Plot TPCF of a galaxy
 
@@ -45,9 +45,12 @@ class myPlot():
         #Try plotting directly if TPCF computed. Else compute.
         try:        
             
-    
-            axs.errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
-            fmt='.-')
+            if(omega1 is True):
+                axs.errorbar(separation_bins,1+corr_fit,yerr=dcorr_fit,
+                fmt='.-')
+            else:
+                axs.errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
+                fmt='.-')
         except AttributeError:
             print("TPCF not computed computing first.")
             self.galaxy.Compute_TPCF()

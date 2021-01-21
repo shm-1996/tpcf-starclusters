@@ -304,7 +304,8 @@ def plot_omega1(save=False,outdir='../Results/',indir=None,method='masked',funct
 
         if(function == 'best'):
             #Choose best function based on AIC value
-            AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples)
+            #AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples)
+            AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AIC(galaxy_name)
             galaxy_functions = ['singlepl','piecewise','singletrunc','doubletrunc']
             galaxy_AIC = [AIC_single,AIC_piecewise,AIC_single_trunc,AIC_double_trunc] 
             galaxy_function = galaxy_functions[np.argmin(galaxy_AIC)] 
@@ -314,13 +315,13 @@ def plot_omega1(save=False,outdir='../Results/',indir=None,method='masked',funct
 
         if(galaxy_function == 'piecewise'):
             
-            sampler = loadObj(galaxy_dir+'/PiecePL_MCMC/'+'MCMC_sampler')
+            sampler = loadObj(galaxy_dir+'/Omega1/PiecePL_MCMC/'+'MCMC_sampler')
         elif(galaxy_function == 'singlepl') :
-            sampler = loadObj(galaxy_dir+'/SinglePL_MCMC/'+'MCMC_sampler')
+            sampler = loadObj(galaxy_dir+'/Omega1/SinglePL_MCMC/'+'MCMC_sampler')
         elif(galaxy_function == 'singletrunc') :
-            sampler = loadObj(galaxy_dir+'/SingleTrunc_MCMC/'+'MCMC_sampler')
+            sampler = loadObj(galaxy_dir+'/Omega1/SingleTrunc_MCMC/'+'MCMC_sampler')
         elif(galaxy_function == 'doubletrunc') :
-            sampler = loadObj(galaxy_dir+'/PiecewiseTrunc_MCMC/'+'MCMC_sampler')
+            sampler = loadObj(galaxy_dir+'/Omega1/PiecewiseTrunc_MCMC/'+'MCMC_sampler')
             
         
         samples = sampler.flatchain
@@ -423,7 +424,7 @@ def plot_omega1(save=False,outdir='../Results/',indir=None,method='masked',funct
             axs[i,j].set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
         #Y-labels only on left column
         if(j == 0):
-            axs[i,j].set_ylabel(r"$\omega_{\mathrm{LS}}\left(\theta \right)$")
+            axs[i,j].set_ylabel(r"$1+\omega_{\mathrm{LS}}\left(\theta \right)$")
         axs[i,j].set_xscale('log')
         axs[i,j].callbacks.connect("xlim_changed", plot_class.axs_to_parsec)
         axs[i,j].legend()
@@ -621,6 +622,7 @@ if __name__ == "__main__":
         help = 'Galaxy for which tpcf to be computed. By default done for all.')
     ap.add_argument('-function',action='store',type=str,default='piecewise',
         help='Function to use to fit. Options are "piecewise", "singlepl","singletrunc", and "doubletrunc".')
+    ap.add_argument('-omega1',action='store_true',help='Flag to compute fits for 1+omega.')
     ap.add_argument('-fit',action='store_true',help='Flag to fit with an MCMC.')
 
     args = vars(ap.parse_args())
@@ -636,10 +638,14 @@ if __name__ == "__main__":
     if(galaxy_input == 'ALL'):
         if(args['fit'] is True):
             for galaxy_name in list_of_galaxies:
-                fit_MCMC_galaxy(galaxy_name,method=method,function=args['function'])
-        plot_MCMCfitsall(save=True,method=method,function=args['function'])
+                fit_MCMC_galaxy(galaxy_name,method=method,function=args['function'],omega1=args['omega1'])
+        if(args['omega1'] is True):
+            plot_omega1(save=True,method=method,function=args['function'])
+        else:
+            plot_MCMCfitsall(save=True,method=method,function=args['function'])
+            
 
     else :
-        fit_MCMC_galaxy(galaxy_input,method=method,function=args['function'])
+        fit_MCMC_galaxy(galaxy_input,method=method,function=args['function'],omega1=omega1)
 
 

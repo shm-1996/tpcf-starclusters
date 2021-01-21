@@ -158,7 +158,7 @@ def lnlike_piecewisetruncation(params,bins,data,data_error):
 ################################################################################################
 #Fitting routines
 
-def fit_MCMC_galaxy(galaxy_name,method='masked_radial',function='piecewise'):
+def fit_MCMC_galaxy(galaxy_name,method='masked_radial',function='piecewise',omega1=False):
     """
     Fit an MCMC to a galaxy with given name. 
     Parameters: 
@@ -189,20 +189,19 @@ def fit_MCMC_galaxy(galaxy_name,method='masked_radial',function='piecewise'):
             '{}_summary'.format(galaxy_class.name))
     if(function == 'piecewise'):
         print("Fitting Piecewise PL with MCMC.")
-        fit_MCMC(galaxy_class,save=True,function='piecewise')
+        fit_MCMC(galaxy_class,save=True,function='piecewise',omega1=omega1)
     elif(function == 'singlepl') :
         print("Fitting Single PL fit in MCMC.")
-        fit_MCMC(galaxy_class,save=True,function='singlepl')
+        fit_MCMC(galaxy_class,save=True,function='singlepl',omega1=omega1)
     elif(function == 'singletrunc'):
         print("Fitting Single PL with exponential truncation fit in MCMC.")
-        fit_MCMC(galaxy_class,save=True,function='singletrunc')
+        fit_MCMC(galaxy_class,save=True,function='singletrunc',omega1=omega1)
     elif(function == 'doubletrunc'):
         print("Fitting Piecewise PL with exponential truncation fit in MCMC.")
-        fit_MCMC(galaxy_class,save=True,function='doubletrunc')
-
+        fit_MCMC(galaxy_class,save=True,function='doubletrunc',omega1=omega1)
     
 
-def fit_MCMC(galaxy_class,save=False,function='piecewise'):
+def fit_MCMC(galaxy_class,save=False,function='piecewise',omega1=False):
     """
     Fit an MCMC to the TPCF of a galaxy and create diagnostic plots after. 
 
@@ -223,13 +222,26 @@ def fit_MCMC(galaxy_class,save=False,function='piecewise'):
     MCMC_directory = galaxy_class.outdir 
     
     if(function == 'piecewise'):
-        MCMC_directory += '/PiecePL_MCMC'
+        if(omega1 is True):
+            MCMC_directory += '/Omega1/PiecePL_MCMC'
+        else:
+            MCMC_directory += '/PiecePL_MCMC'
     elif(function == 'singlepl'):
-        MCMC_directory += '/SinglePL_MCMC'
+        if(omega1 is True):
+            MCMC_directory += '/Omega1/SinglePL_MCMC'
+        else:
+            MCMC_directory += '/SinglePL_MCMC'
+        
     elif(function == 'singletrunc'):
-        MCMC_directory += '/SingleTrunc_MCMC'
+        if(omega1 is True):
+            MCMC_directory += '/Omega1/SingleTrunc_MCMC'
+        else:
+            MCMC_directory += '/SingleTrunc_MCMC'
     elif(function == 'doubletrunc'):
-        MCMC_directory += '/PiecewiseTrunc_MCMC'
+        if(omega1 is True):
+            MCMC_directory += '/Omega1/PiecewiseTrunc_MCMC'
+        else:
+            MCMC_directory += '/PiecewiseTrunc_MCMC'
 
     MCMC_directory = os.path.abspath(MCMC_directory)
     if(not os.path.exists(MCMC_directory)):
@@ -276,20 +288,42 @@ galaxy_class.fit_values[2],np.exp(galaxy_class.fit_values[3]),np.exp(galaxy_clas
 
     #Include distance in argument for piecewise model sampler
     if(function == 'piecewise'):
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, 
+        if(omega1 is True):
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, 
+                                    args=(separation_bins,np.log(1+corr_fit),
+                                         dcorr_fit/(1+corr_fit),distance))
+        else:
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, 
                                     args=(separation_bins,np.log(corr_fit),
                                          dcorr_fit/corr_fit,distance))
     elif(function == 'singlepl'):
 
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_singlepower, 
+        if(omega1 is True):
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_singlepower, 
+                                    args=(separation_bins,np.log(1+corr_fit),
+                                         dcorr_fit/(1+corr_fit)))
+        else:
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_singlepower, 
                                     args=(separation_bins,np.log(corr_fit),
                                          dcorr_fit/corr_fit))
     elif(function == 'singletrunc'):
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_lineartruncation, 
+        
+        if(omega1 is True):
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_lineartruncation, 
+                                    args=(separation_bins,np.log(1+corr_fit),
+                                         dcorr_fit/(1+corr_fit)))
+        else:
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_lineartruncation, 
                                     args=(separation_bins,np.log(corr_fit),
                                          dcorr_fit/corr_fit))
     elif(function == 'doubletrunc'):
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_piecewisetruncation, 
+
+        if(omega1 is True):
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_piecewisetruncation, 
+                                    args=(separation_bins,np.log(1+corr_fit),
+                                         dcorr_fit/(1+corr_fit),distance))
+        else:
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_piecewisetruncation, 
                                     args=(separation_bins,np.log(corr_fit),
                                          dcorr_fit/corr_fit,distance))
 
@@ -373,7 +407,11 @@ galaxy_class.fit_values[2],np.exp(galaxy_class.fit_values[3]),np.exp(galaxy_clas
             axs.plot(separation_bins,np.exp(model_piecewise_truncation(sample,separation_bins)),
              alpha=0.1)            
 
-    axs.errorbar(separation_bins,galaxy_class.corr,yerr=galaxy_class.dcorr,
+    if(omega1 is True):
+        axs.errorbar(separation_bins,1+galaxy_class.corr,yerr=galaxy_class.dcorr,
+                fmt='.-')
+    else:
+        axs.errorbar(separation_bins,galaxy_class.corr,yerr=galaxy_class.dcorr,
                 fmt='.-')
 
     axs.set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
@@ -396,7 +434,7 @@ galaxy_class.fit_values[2],np.exp(galaxy_class.fit_values[3]),np.exp(galaxy_clas
     pl = myPlot(galaxy_class)
        
     pl.plot_TPCF(save=save,filename=MCMC_directory+'/TPCF_MCMC.pdf',
-        function=function)
+        function=function,omega1=omega1)
 
     return
 
