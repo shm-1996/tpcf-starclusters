@@ -1,6 +1,8 @@
 from TPCF import linear_function,onepowerlaw_function,linear_truncation
 from matplotlib.transforms import Bbox
 from ToyModels import *
+from joblib import Parallel, delayed
+from itertools import repeat
 
 #Some fixed parameters
 ############################################################################################
@@ -168,8 +170,8 @@ def MC_fractal(xfractal,yfractal,size,angle=0.0,no_bins=40,N_MC=30,debug=False):
     attempts = 0
     max_attempts = 5
     vfunc = np.vectorize(check_contains,excluded=['bbox'])
-    corr_MC = np.zeros((N_MC,no_bins+1))
-    dcorr_MC = np.zeros((N_MC,no_bins+1))
+    corr_MC = np.zeros((N_MC,no_bins))
+    dcorr_MC = np.zeros((N_MC,no_bins))
     while n<N_MC:
         #Random corner
         xlow = np.random.uniform(low=size,high=1.-size)
@@ -267,7 +269,7 @@ def TPCF_MC(xfractal,yfractal,size,angle=0.0,no_bins=40,N_MC=30,MC_directory=Non
     axs.set_xlim(x0,size)
     
     axs.legend(loc='best')
-    plt.savefig(MC_directory+'/Size_{}_Fractal'.format(int(fractal*10)),bbox_inches='tight')        
+    plt.savefig(MC_directory+'/Size_{}_Fractal'.format(int(size*10)),bbox_inches='tight')        
     plt.clf()
     plt.close(fig)
 
@@ -288,9 +290,9 @@ def TPCF_MC(xfractal,yfractal,size,angle=0.0,no_bins=40,N_MC=30,MC_directory=Non
             ls='--',label=r'$\alpha = {:3.2f} \pm {:3.2f}$'.format(popt[1],perr[1]))
 
     axs.axvline(size/2.,color='#F9004A',lw=1.5,
-                label=r'$r_{\mathrm{max}} = {}$'.format(size/2.),ls='--')
+                label=r'$r_{\mathrm{max}}$'+r'$ = {}$'.format(size/2.),ls='--')
     axs.axvline(popt[2],ls='--',color='#F4271C',lw=1.5,
-                  label=r'$\r_c = {:3.2f} \pm {:3.2f}$'.format(popt[2],perr[2]))
+                  label=r'$r_c = {:3.2f} \pm {:3.2f}$'.format(popt[2],perr[2]))
 
     axs.set_xlabel(r"$\Delta x \, (\mathrm{pixels})$")
     axs.set_ylabel(r"$\omega_{\mathrm{LS}}\left(\theta \right)$")
@@ -300,7 +302,7 @@ def TPCF_MC(xfractal,yfractal,size,angle=0.0,no_bins=40,N_MC=30,MC_directory=Non
     axs.set_xlim(x0,size)
     
     axs.legend(loc='best')
-    plt.savefig(MC_directory+'/Size_{}_Cutoff'.format(int(fractal*10)),bbox_inches='tight')        
+    plt.savefig(MC_directory+'/Size_{}_Cutoff'.format(int(size*10)),bbox_inches='tight')        
     plt.clf()
     plt.close(fig)
     return
@@ -311,6 +313,7 @@ def TPCF_MC(xfractal,yfractal,size,angle=0.0,no_bins=40,N_MC=30,MC_directory=Non
 
 def Fractal_Table_OneD(fractal,overwrite=False):
 #check if pkl file exists        
+    print("Fractal Dimension: {}".format(fractal))
     pkl_file = '../Toy_Models/Fractals/D_{}'.format(int(fractal*10))
     if(os.path.exists(pkl_file+'.pkl') and overwrite == False):
         print("Pickle summary exists reading from it.")
@@ -477,6 +480,10 @@ def Fractal_Table_OneD(fractal,overwrite=False):
         np.savetxt(file,file_str,delimiter='\t',fmt='%0.2f')
         file.write("\n")
         file.close()
+    print("")
+    print("")
+    print("")
+    print("##############################################################################")
 
 def Fractal_Table(overwrite=False): 
 
@@ -493,14 +500,24 @@ def Fractal_Table(overwrite=False):
 
     #Get positions and TPCF of fractals
     for fractal in fractal_dims:
-        print("Fractal Dimension: {}".format(fractal))
         Fractal_Table_OneD(fractal,overwrite=overwrite)
-        #Print some empty lines
-        print("")
-        print("")
-        print("")
-        print("##############################################################################")
 
+def Fractal_Table_Parallel(overwrite=False): 
+
+    print("Running Fractal Structure Experiments..")
+    print("##############################################################################")
+    print("")
+
+    #Create output table file    
+    file = open(filename,'w')
+    header = "#D_in\tD_tpcf\tD_tpcf_error\tL_max\tL_cutoff\tL_cutoff_error\tD_omega\tD_omega_err"
+    file.write(header)
+    file.write("\n")
+    file.close()
+
+    #Get positions and TPCF of fractals
+    results = Parallel(n_jobs=-1,prefer='processes',verbose=1)(map(delayed(Fractal_Table_OneD),
+            fractal_dims,repeat(overwrite)))        
 if __name__ == "__main__":
-    Fractal_Table(overwrite=True)
+    Fractal_Table_OneD(1.5,overwrite=False)
     print("Done")
