@@ -6,7 +6,8 @@ Shyam Harimohan Menon (2020)
 """
 from header import *
 from Plot_Class import *
-from CreateTables import compare_AIC
+from CreateTables import compare_AIC, Get_Cutoff_Scale
+import matplotlib.lines as lines
 
 #Axes limits in parsec
 global_axes_limits = [8,1.e4]
@@ -669,6 +670,7 @@ def Combined_Clusters(save=False,outdir='../Results/',indir=None,method='masked'
         galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
         plot_class = myPlot(galaxy_class)
         ages = galaxy_class.get_cluster_ages()
+        galaxy_class.get_ra_dec()
         cmap = cmr.waterlily
 
         ax1 = plt.subplot2grid((3,4),(i,j),fig=fig)
@@ -695,7 +697,7 @@ def Combined_Clusters(save=False,outdir='../Results/',indir=None,method='masked'
         
 
         # #Draw 100 arcsec scale bar
-        import matplotlib.lines as lines
+        
         #No of pixels in axes
         total_pixels = np.int(np.floor(ax1.transData.transform((xmax,ymax))[0]) - \
         np.floor(ax1.transData.transform((xmin,ymin))[0]))
@@ -740,6 +742,168 @@ def Combined_Clusters(save=False,outdir='../Results/',indir=None,method='masked'
 
     if(save):
         filename = outdir+'Combined_Clusters.pdf'
+        plt.savefig(filename,bbox_inches='tight')
+        plt.close()
+    else :
+        plt.show()
+        
+
+def Combined_Clusters_FOV(save=False,outdir='../Results/',indir=None,method='masked'):
+
+    print("Plotting spatial positions of clusters in all galaxies")
+
+    #Create figure and axs instance
+    fig = plt.figure(figsize=(20,16))
+
+    if(indir == None):
+        indir = os.path.abspath('../Results/Galaxies/')+'/'
+        method_dir = ''
+    else :
+        method_dir = None
+
+    #Directories
+    indir = os.path.abspath(indir)+'/'
+    outir = os.path.abspath(outdir)+'/'
+
+    if(method_dir is not None):
+        if(method.upper() == 'MASKED'):
+            method_dir = 'Masked/'
+        elif(method.upper() == 'UNIFORM'):
+            method_dir = 'Uniform/'
+        elif(method.upper() == 'MASKED_RADIAL'):
+            method_dir = 'Masked_Radial/'
+        else:
+            raise myError("Method not recognised.")
+
+
+    i,j = 0,0
+    #Loop through the galaxies
+    for galaxy_name in list_of_galaxies:
+        if(method_dir == None):
+            galaxy_dir = indir+galaxy_name+'/'            
+        else :
+            galaxy_dir = indir+galaxy_name+'/'+method_dir
+
+        galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
+        plot_class = myPlot(galaxy_class)
+        ages = galaxy_class.get_cluster_ages()
+        galaxy_class.get_ra_dec()
+        cmap = cmr.waterlily
+        region = read_ds9(galaxy_class.region_file)
+        hdu = fits.open(galaxy_class.fits_file)[0]
+        wcs = WCS(hdu.header)
+
+        ax1 = plt.subplot2grid((3,4),(i,j),fig=fig)
+
+        x = galaxy_class.ra*3600.0
+        y = galaxy_class.dec*3600.0
+
+
+        #Get galaxy centre pixel coordinates
+        ra_dec = SkyCoord.from_name(galaxy_class.name)
+        xpix_c,ypix_c = wcs.all_world2pix(ra_dec.ra.value,ra_dec.dec.value,0)
+        
+        #Loop over FOV regions to get min/max values after deprojecting
+        xmin,ymin = 1.e10,1.e10
+        xmax,ymax = -1.e10,-1.e10
+        for k in range(0,np.size(region)):
+            region_dep = deproject_region_centre(region,k,xpix_c,ypix_c,galaxy_class)    
+            if(region_dep is not None):
+                region_sky = region_dep.to_sky(wcs)
+                xtemp,ytemp = np.min(region_sky.vertices.ra.value),np.min(region_sky.vertices.dec.value)
+                xmin,ymin = min(xtemp,xmin),min(ymin,ytemp)
+                xtemp,ytemp = np.max(region_sky.vertices.ra.value),np.max(region_sky.vertices.dec.value)
+                xmax,ymax = max(xtemp,xmin),max(ymin,ytemp)
+
+        #Convert to arcsec
+        xmin,ymin,xmax,ymax = xmin*3600,ymin*3600,xmax*3600,ymax*3600
+        #Get central pixel values
+        xcen = (xmin+xmax)/2.
+        ycen = (ymin+ymax)/2.
+
+        #Scale offset around bounding box to ~ 5% of axes width
+        offset_x = (np.max(x)-np.min(x))*0.05
+        offset_y = (np.max(y)-np.min(y))*0.05
+
+        xmin,xmax = xmin-offset_x-xcen, xmax+offset_x-xcen
+        ymin,ymax = ymin-offset_y-ycen, ymax+offset_y-ycen
+        ax1.set_xlim(xmin,xmax)
+        ax1.set_ylim(ymin,ymax)
+
+        im1 = ax1.scatter(x-xcen,y-ycen,s=10,c=np.log10(ages),alpha=0.5,cmap=cmap,lw=0.3)
+        cbar = fig.colorbar(im1,ax = ax1,use_gridspec=False,
+                            orientation='vertical',pad=0.00,aspect=30)
+        
+
+        # #Draw 100 arcsec scale bar
+        
+        #No of pixels in axes
+        total_pixels = np.int(np.floor(ax1.transData.transform((xmax,ymax))[0]) - \
+        np.floor(ax1.transData.transform((xmin,ymin))[0]))
+
+        length_per_pixel = (xmax-xmin)/(total_pixels)
+        #Convert to parsec 
+        length_per_pixel = plot_class.sep_to_pc(length_per_pixel)
+
+        #Scale bar of 50 arcsec
+        length = plot_class.sep_to_pc(50)
+        no_pixels = np.abs(length/length_per_pixel)
+        no_pixels = no_pixels/total_pixels
+
+        scale = lines.Line2D([0.8,0.8+no_pixels],[0.1],
+                                         lw=1,color='black',
+                                        transform=ax1.transAxes)
+        ax1.add_line(scale)
+        ax1.annotate(r'$50^{\prime \prime} = %d \, \mathrm{pc}$'%length,(0.65,0.15),xycoords='axes fraction',
+                            fontsize=12)
+        
+        #Draw cutoff scale as a circular patch
+        cutoff_scale,cutoff_error = Get_Cutoff_Scale(galaxy_class,function='best')
+        
+        length = plot_class.sep_to_pc(cutoff_scale)
+        no_pixels = np.abs(length/length_per_pixel)
+        no_pixels = no_pixels/total_pixels
+        cutoff = mpl.patches.Circle((0.4,0.8),radius=cutoff_scale,
+                                   fill=False,ls='--',lw=2.0,color='#F9004A')
+        ax1.add_artist(cutoff)
+        
+
+        #Draw FOV
+        for k in range(0,np.size(region)):
+            region_dep = deproject_region_centre(region,k,xpix_c,ypix_c,galaxy_class)
+            if(region_dep is not None):
+                region_sky = region_dep.to_sky(wcs)
+                xy = np.vstack([region_sky.vertices.ra.value*3600.0-xcen,
+                                region_sky.vertices.dec.value*3600.0-ycen]).transpose()
+                patch = mpl.patches.Polygon(xy=xy,fill=False,color='red')
+                ax1.add_patch(patch)
+                #sides = region_dep.to_sky(wcs).vertices
+                #sizes = get_separations(sides,pl)
+
+
+        if(i==2):
+            ax1.set_xlabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
+
+        if(j==0):
+            ax1.set_ylabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
+
+        if(j==3):    
+            cbar.ax.set_ylabel(r"$\log_{10} \, \mathrm{Age} \, (\mathrm{yr})$",
+                rotation=90,labelpad=5,fontsize=20)
+        
+        ax1.text(0.1,0.1,r'$\mathrm{NGC}$'+' '+r'${}$'.format(galaxy_name.split('_')[1]),
+            transform=ax1.transAxes)
+
+        #Get position of subplot
+        #Get position of subplot
+        j +=1
+        if(j==4):
+            j = 0
+            i +=1
+
+
+    if(save):
+        filename = outdir+'Combined_Clusters_FOV.pdf'
         plt.savefig(filename,bbox_inches='tight')
         plt.close()
     else :
@@ -1045,7 +1209,7 @@ def Combined_Clusters_BreakView(save=False,outdir='../Results/',indir=None,metho
         length = plot_class.sep_to_pc(cutoff_scale)
         no_pixels = np.abs(length/length_per_pixel)
         no_pixels = no_pixels/total_pixels
-        cutoff = mpl.patches.Circle((0.4,0.8),radius=cutoff_scale,
+        cutoff = mpl.patches.Circle((0.4,0.8),radius=cutoff_scale/2.,
                                    fill=False,ls='--',lw=2.0,color='#F9004A')
         ax1.add_artist(cutoff)
         
@@ -1079,7 +1243,21 @@ def Combined_Clusters_BreakView(save=False,outdir='../Results/',indir=None,metho
     else :
         plt.show()
 
-
+def deproject_region_centre(region,i,xpix_c,ypix_c,galaxy_class):
+    #rotate clockwise by angle PA
+    region_rotated = region[i].rotate(regions.PixCoord(xpix_c,ypix_c),-galaxy_class.pa*u.deg)
+    try:
+        size = np.size(region_rotated.vertices)
+    except:
+        return None
+    x = np.zeros(size)
+    y = np.zeros(size)
+    for i in range(0,size):
+        x[i] = region_rotated.vertices[i].x/np.cos(np.deg2rad(galaxy_class.inclination)) -\
+        xpix_c/np.cos(np.deg2rad(galaxy_class.inclination)) + xpix_c
+        y[i] = region_rotated.vertices[i].y
+    regions_dep = regions.PolygonPixelRegion(vertices=regions.PixCoord(x=x,y=y))    
+    return regions_dep
 
 
 
