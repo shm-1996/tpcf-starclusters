@@ -445,19 +445,31 @@ def GalaxyTPCF_Table():
 
     return
 
-def compare_AIC(galaxy_name):
+def compare_AIC(galaxy_name,omega1=False):
     #Read in samplers
-    
-    sampler_single = loadObj('../Results/Galaxies/{}/Masked/\
+    if(omega1):
+        sampler_single = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
 SinglePL_MCMC/MCMC_sampler'.format(galaxy_name))
 
-    sampler_piecewise = loadObj('../Results/Galaxies/{}/Masked/\
+        sampler_piecewise = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
 PiecePL_MCMC/MCMC_sampler'.format(galaxy_name))
 
-    sampler_singletrunc = loadObj('../Results/Galaxies/{}/Masked/\
+        sampler_singletrunc = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
 SingleTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
 
-    sampler_piecewisetrunc = loadObj('../Results/Galaxies/{}/Masked/\
+        sampler_piecewisetrunc = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
+PiecewiseTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
+    else:
+        sampler_single = loadObj('../Results/Galaxies/{}/Masked/\
+SinglePL_MCMC/MCMC_sampler'.format(galaxy_name))
+
+        sampler_piecewise = loadObj('../Results/Galaxies/{}/Masked/\
+PiecePL_MCMC/MCMC_sampler'.format(galaxy_name))
+
+        sampler_singletrunc = loadObj('../Results/Galaxies/{}/Masked/\
+SingleTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
+
+        sampler_piecewisetrunc = loadObj('../Results/Galaxies/{}/Masked/\
 PiecewiseTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
     
     AIC_single = 2*2.0 - 2*np.max(sampler_single.flatlnprobability)
@@ -467,17 +479,30 @@ PiecewiseTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
     
     return AIC_single,AIC_piecewise, AIC_singletrunc, AIC_piecewisetrunc
 
-def compare_BIC(galaxy_name,nsamples):
-    sampler_single = loadObj('../Results/Galaxies/{}/Masked/\
+def compare_BIC(galaxy_name,nsamples,omega1=False):
+    if(omega1):
+        sampler_single = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
 SinglePL_MCMC/MCMC_sampler'.format(galaxy_name))
 
-    sampler_piecewise = loadObj('../Results/Galaxies/{}/Masked/\
+        sampler_piecewise = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
 PiecePL_MCMC/MCMC_sampler'.format(galaxy_name))
 
-    sampler_singletrunc = loadObj('../Results/Galaxies/{}/Masked/\
+        sampler_singletrunc = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
 SingleTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
 
-    sampler_piecewisetrunc = loadObj('../Results/Galaxies/{}/Masked/\
+        sampler_piecewisetrunc = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
+PiecewiseTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
+    else:
+        sampler_single = loadObj('../Results/Galaxies/{}/Masked/\
+SinglePL_MCMC/MCMC_sampler'.format(galaxy_name))
+
+        sampler_piecewise = loadObj('../Results/Galaxies/{}/Masked/\
+PiecePL_MCMC/MCMC_sampler'.format(galaxy_name))
+
+        sampler_singletrunc = loadObj('../Results/Galaxies/{}/Masked/\
+SingleTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
+
+        sampler_piecewisetrunc = loadObj('../Results/Galaxies/{}/Masked/\
 PiecewiseTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
     
     BIC_single = np.log(nsamples)*2.0 - 2*np.max(sampler_single.flatlnprobability)
@@ -487,17 +512,30 @@ PiecewiseTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
     
     return BIC_single,BIC_piecewise, BIC_singletrunc, BIC_piecewisetrunc
 
-def compare_AICc(galaxy_name,nsamples):
-    sampler_single = loadObj('../Results/Galaxies/{}/Masked/\
+def compare_AICc(galaxy_name,nsamples,omega1=False):
+    if(omega1):
+        sampler_single = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
 SinglePL_MCMC/MCMC_sampler'.format(galaxy_name))
 
-    sampler_piecewise = loadObj('../Results/Galaxies/{}/Masked/\
+        sampler_piecewise = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
 PiecePL_MCMC/MCMC_sampler'.format(galaxy_name))
 
-    sampler_singletrunc = loadObj('../Results/Galaxies/{}/Masked/\
+        sampler_singletrunc = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
 SingleTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
 
-    sampler_piecewisetrunc = loadObj('../Results/Galaxies/{}/Masked/\
+        sampler_piecewisetrunc = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
+PiecewiseTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
+    else:
+        sampler_single = loadObj('../Results/Galaxies/{}/Masked/\
+SinglePL_MCMC/MCMC_sampler'.format(galaxy_name))
+
+        sampler_piecewise = loadObj('../Results/Galaxies/{}/Masked/\
+PiecePL_MCMC/MCMC_sampler'.format(galaxy_name))
+
+        sampler_singletrunc = loadObj('../Results/Galaxies/{}/Masked/\
+SingleTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
+
+        sampler_piecewisetrunc = loadObj('../Results/Galaxies/{}/Masked/\
 PiecewiseTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
 
     AIC_single = 2*2.0 - 2*np.max(sampler_single.flatlnprobability)
