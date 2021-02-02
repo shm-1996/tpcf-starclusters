@@ -186,9 +186,6 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
 
             
 
-
-
-
         #Plot stuff
         #X-labels only on bottom row
         if(i==2):
@@ -257,7 +254,7 @@ def plot_omega1(save=False,outdir='../Results/',indir=None,method='masked',funct
 
     """
 
-    print("Plotting Combined TPCF plot with MCMC fits using a {} function.".format(function))
+    print("Plotting Combined TPCF plot of 1+ omega with MCMC fits using a {} function.".format(function))
 
     #Create figure and axs instance
     fig,axs = plt.subplots(nrows=3,ncols=4,figsize=(16,12))
@@ -305,7 +302,7 @@ def plot_omega1(save=False,outdir='../Results/',indir=None,method='masked',funct
         if(function == 'best'):
             #Choose best function based on AIC value
             #AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples)
-            AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AIC(galaxy_name)
+            AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples,omega1=True)
             galaxy_functions = ['singlepl','piecewise','singletrunc','doubletrunc']
             galaxy_AIC = [AIC_single,AIC_piecewise,AIC_single_trunc,AIC_double_trunc] 
             galaxy_function = galaxy_functions[np.argmin(galaxy_AIC)] 
