@@ -6,7 +6,7 @@ Shyam Harimohan Menon (2020)
 """
 from header import *
 from Plot_Class import *
-from CreateTables import compare_AIC, Get_Cutoff_Scale
+from CreateTables import compare_AIC, Get_Cutoff_Scale, compare_AICc
 import matplotlib.lines as lines
 
 #Axes limits in parsec
@@ -636,7 +636,7 @@ def Combined_Clusters(save=False,outdir='../Results/',indir=None,method='masked'
     print("Plotting spatial positions of clusters in all galaxies")
 
     #Create figure and axs instance
-    fig = plt.figure(figsize=(20,16),constrained_layout=True)
+    fig = plt.figure(figsize=(24,16),constrained_layout=True)
 
     if(indir == None):
         indir = os.path.abspath('../Results/Galaxies/')+'/'
@@ -717,6 +717,7 @@ def Combined_Clusters(save=False,outdir='../Results/',indir=None,method='masked'
         ax1.add_line(scale)
         ax1.annotate(r'$50^{\prime \prime} = %d \, \mathrm{pc}$'%length,(0.65,0.15),xycoords='axes fraction',
                             fontsize=12)
+        #ax1.set_box_aspect(1)
 
 
         if(i==2):
@@ -750,10 +751,10 @@ def Combined_Clusters(save=False,outdir='../Results/',indir=None,method='masked'
 
 def Combined_Clusters_FOV(save=False,outdir='../Results/',indir=None,method='masked'):
 
-    print("Plotting spatial positions of clusters in all galaxies")
+    print("Plotting spatial positions of clusters in all galaxies with relavant scales annotated.")
 
     #Create figure and axs instance
-    fig = plt.figure(figsize=(20,16))
+    fig = plt.figure(figsize=(20,16),constrained_layout=True)
 
     if(indir == None):
         indir = os.path.abspath('../Results/Galaxies/')+'/'
@@ -864,7 +865,8 @@ def Combined_Clusters_FOV(save=False,outdir='../Results/',indir=None,method='mas
         no_pixels = np.abs(length/length_per_pixel)
         no_pixels = no_pixels/total_pixels
         cutoff = mpl.patches.Circle((0.4,0.8),radius=cutoff_scale,
-                                   fill=False,ls='--',lw=2.0,color='#F9004A')
+                                   fill=False,ls='--',lw=2.0,color='#F9004A',
+                                   label='cutoff')
         ax1.add_artist(cutoff)
         
 
@@ -875,10 +877,21 @@ def Combined_Clusters_FOV(save=False,outdir='../Results/',indir=None,method='mas
                 region_sky = region_dep.to_sky(wcs)
                 xy = np.vstack([region_sky.vertices.ra.value*3600.0-xcen,
                                 region_sky.vertices.dec.value*3600.0-ycen]).transpose()
-                patch = mpl.patches.Polygon(xy=xy,fill=False,color='red')
+                patch = mpl.patches.Polygon(xy=xy,fill=False,color='k',label='FOV')
                 ax1.add_patch(patch)
-                #sides = region_dep.to_sky(wcs).vertices
-                #sizes = get_separations(sides,pl)
+                sides = region_dep.to_sky(wcs).vertices
+                sizes = get_separations(sides,plot_class)
+
+        #Draw probable boundary scale
+        boundary_scale = np.max(sizes)/6.0
+        boundary_scale = plot_class.pc_to_sep(boundary_scale)
+        length = boundary_scale
+        no_pixels = np.abs(length/length_per_pixel)
+        no_pixels = no_pixels/total_pixels
+        boundary = mpl.patches.Circle((0.4,0.8),radius=length,
+                                   fill=False,ls='--',lw=2.0,color='#EE24F6',
+                                   label='boundary')
+        ax1.add_artist(boundary)
 
 
         if(i==2):
@@ -903,7 +916,7 @@ def Combined_Clusters_FOV(save=False,outdir='../Results/',indir=None,method='mas
 
 
     if(save):
-        filename = outdir+'Combined_Clusters_FOV.pdf'
+        filename = outdir+'Combined_Clusters_Scales.pdf'
         plt.savefig(filename,bbox_inches='tight')
         plt.close()
     else :
@@ -963,13 +976,27 @@ def Scatter_Correlations(save=False,outdir='../Results/',indir=None,method='mask
         T_value[index] = galaxy_class.T_value
         T_value[index] = galaxy_class.T_value
 
-        #Get alpha 
-        AIC_single,AIC_piecewise = compare_AIC(galaxy_name)
-        if(AIC_single<AIC_piecewise):
-            sampler = loadObj(galaxy_dir+'/SinglePL_MCMC/'+'MCMC_sampler')
-        else:
-            sampler = loadObj(galaxy_dir+'/PiecePL_MCMC/'+'MCMC_sampler')
+        #Find no of samples to which MCMC was fitted
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        nsamples = np.size(corr_fit)
 
+        #Get alpha 
+        AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples,omega1=True)
+        galaxy_functions = ['singlepl','piecewise','singletrunc','doubletrunc']
+        galaxy_AIC = [AIC_single,AIC_piecewise,AIC_single_trunc,AIC_double_trunc] 
+        galaxy_function = galaxy_functions[np.argmin(galaxy_AIC)] 
+        
+        if(galaxy_function == 'piecewise'):            
+            sampler = loadObj(galaxy_dir+'/Omega1/PiecePL_MCMC/'+'MCMC_sampler')
+        elif(galaxy_function == 'singlepl') :
+            sampler = loadObj(galaxy_dir+'/Omega1/SinglePL_MCMC/'+'MCMC_sampler')
+        elif(galaxy_function == 'singletrunc') :
+            sampler = loadObj(galaxy_dir+'/Omega1/SingleTrunc_MCMC/'+'MCMC_sampler')
+        elif(galaxy_function == 'doubletrunc') :
+            sampler = loadObj(galaxy_dir+'/Omega1/PiecewiseTrunc_MCMC/'+'MCMC_sampler')
+            
+        
         samples = sampler.flatchain
         galaxy_class.fit_values = samples[np.argmax(sampler.flatlnprobability)]
         galaxy_class.fit_errors = samples.std(axis=0)
@@ -1116,6 +1143,497 @@ def Compare_TPCFMethods(save=False,outdir='../Results/',indir=None,method='maske
     else :
         plt.show()
 
+
+def Plot_CombinedTPCF(save=False,outdir='../Results/',indir=None,method='masked',function='best'):
+    """
+    Read MCMC samplers and plot the TPCF with best fit power law for all galaxies. 
+
+    Parameters: 
+        save: 
+        Flag to save the plot
+        outdir: 
+            Output directory in which to store plot. Default is results directory.
+        indir :
+            Input directory from which to read the results. Default is results directory.
+        method : 
+            Method for which TPCF's have been computed.
+        function:
+            Function fitted using MCMC: piecewise or singlepl or best among both
+    Returns:
+        None
+
+
+    """
+
+    print("Plotting Combined TPCF plot with MCMC fits using a {} function.".format(function))
+
+    #Create figure and axs instance
+    fig,axs = plt.subplots(nrows=3,ncols=4,figsize=(16,12))
+
+    if(indir == None):
+        indir = os.path.abspath('../Results/Galaxies/')+'/'
+        method_dir = ''
+    else :
+        method_dir = None
+
+    #Directories
+    indir = os.path.abspath(indir)+'/'
+    outir = os.path.abspath(outdir)+'/'
+
+    if(method_dir is not None):
+        if(method.upper() == 'MASKED'):
+            method_dir = 'Masked/'
+        elif(method.upper() == 'UNIFORM'):
+            method_dir = 'Uniform/'
+        elif(method.upper() == 'MASKED_RADIAL'):
+            method_dir = 'Masked_Radial/'
+        else:
+            raise myError("Method not recognised.")
+
+    if(function not in ['piecewise','singlepl','best','singletrunc','doubletrunc']):
+        raise ValueError("Function should be either piecewise or singlepl or best.")
+
+    i,j = 0,0            
+    #Loop through the galaxies
+    galaxy_function = function
+    for galaxy_name in list_of_galaxies:
+        if(method_dir == None):
+            galaxy_dir = indir+galaxy_name+'/'            
+        else :
+            galaxy_dir = indir+galaxy_name+'/'+method_dir
+
+        galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
+
+        #Find no of samples to which MCMC was fitted
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        nsamples = np.size(corr_fit)
+
+
+        if(function == 'best'):
+            #Choose best function based on AIC value
+            AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples)
+            galaxy_functions = ['singlepl','piecewise','singletrunc','doubletrunc']
+            galaxy_AIC = [AIC_single,AIC_piecewise,AIC_single_trunc,AIC_double_trunc] 
+            galaxy_function = galaxy_functions[np.argmin(galaxy_AIC)] 
+        else:
+            galaxy_function = function
+
+
+        if(galaxy_function == 'piecewise'):
+            
+            sampler = loadObj(galaxy_dir+'/PiecePL_MCMC/'+'MCMC_sampler')
+        elif(galaxy_function == 'singlepl') :
+            sampler = loadObj(galaxy_dir+'/SinglePL_MCMC/'+'MCMC_sampler')
+        elif(galaxy_function == 'singletrunc') :
+            sampler = loadObj(galaxy_dir+'/SingleTrunc_MCMC/'+'MCMC_sampler')
+        elif(galaxy_function == 'doubletrunc') :
+            sampler = loadObj(galaxy_dir+'/PiecewiseTrunc_MCMC/'+'MCMC_sampler')
+            
+        
+        samples = sampler.flatchain
+        galaxy_class.fit_values = samples[np.argmax(sampler.flatlnprobability)]
+        galaxy_class.fit_errors = samples.std(axis=0)
+        plot_class = myPlot(galaxy_class)
+
+        #Secondary axis
+        separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+        separation_bins = separation_bins.astype(np.float)
+        plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
+
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
+            
+        axs[i,j].set_yscale('log')
+        axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
+            fmt='.-',lw=0.2)
+        
+        #Set X-Axis Limits
+        distance = galaxy_class.distance*const.Parsec*1.e6
+        axs_limits = [0.0,0.0]
+        axs_limits[0] =  global_axes_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
+        axs_limits[1] =  global_axes_limits[1]*const.Parsec/distance*u.radian.to(u.arcsec)
+        axs[i,j].set_xlim(axs_limits[0],axs_limits[1])
+
+        ls = '-'
+        lw = 0.2
+        lc = 'k'
+
+        ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
+        
+        #Fit plot
+        if(galaxy_function == 'piecewise'):
+            break_theta = np.exp(galaxy_class.fit_values[3])
+            break_theta_error = np.exp(galaxy_class.fit_errors[3])
+            axs[i,j].plot(plot_points,np.exp(linear_function(plot_points,galaxy_class.fit_values[0],
+                galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3])),
+                ls=ls,label='fit',color=lc,lw=lw)
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+                label=r'$\alpha_1 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[1],galaxy_class.fit_errors[1]))
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+                label=r'$\alpha_2 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[2],galaxy_class.fit_errors[2]))
+            axs[i,j].axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
+                break_theta_error))
+        
+        elif(galaxy_function == 'singlepl'):
+
+            axs[i,j].plot(plot_points,np.exp(onepowerlaw_function(plot_points,galaxy_class.fit_values[0],
+            galaxy_class.fit_values[1])),
+            label='fit',ls=ls,lw=lw,color=lc)
+
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+                label=r'$\alpha_1 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[1],
+                    galaxy_class.fit_errors[1]))
+        
+        elif(galaxy_function == 'singletrunc'):
+            axs[i,j].plot(plot_points,np.exp(linear_truncation(plot_points,galaxy_class.fit_values[0],
+                galaxy_class.fit_values[1],galaxy_class.fit_values[2])),
+                label='fit',ls=ls,lw=lw,color=lc)
+            theta_c = galaxy_class.fit_values[2]
+            theta_c_error = galaxy_class.fit_errors[2]
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+            label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[1],
+                galaxy_class.fit_errors[1]))
+            axs[i,j].axvline(theta_c,ls=':',label=r'$\theta_c = {:2.1f} \pm {:2.1f}$'.format(theta_c,
+                theta_c_error))
+        
+        elif(galaxy_function == 'doubletrunc'):
+            axs[i,j].plot(plot_points,np.exp(piecewise_truncation(plot_points,galaxy_class.fit_values[0],
+                    galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3],
+                    galaxy_class.fit_values[4])),
+                    label='fit',ls=ls,lw=lw,color=lc)
+            break_theta = np.exp(galaxy_class.fit_values[3])
+            break_theta_error = np.exp(galaxy_class.fit_errors[3])
+            theta_c = galaxy_class.fit_values[4]
+            theta_c_error = galaxy_class.fit_errors[4]
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+            label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[1],
+                galaxy_class.fit_errors[1]))
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+                label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[2],
+                galaxy_class.fit_errors[2]))
+            axs[i,j].axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
+                break_theta_error))
+
+            axs[i,j].axvline(theta_c,ls=':',label=r'$\theta_c = {:2.1f} \pm {:2.1f}$'.format(theta_c,
+                theta_c_error))
+
+
+        #Figure out edge effect region
+        region = read_ds9(galaxy_class.region_file)
+        hdu = fits.open(galaxy_class.fits_file)[0]
+        wcs = WCS(hdu.header)
+        ra_dec = SkyCoord.from_name(galaxy_class.name)
+        xpix_c,ypix_c = wcs.all_world2pix(ra_dec.ra.value,ra_dec.dec.value,0)
+
+        for k in range(0,np.size(region)):
+            region_dep = deproject_region_centre(region,k,xpix_c,ypix_c,galaxy_class)
+            if(region_dep is not None):
+                sides = region_dep.to_sky(wcs).vertices
+                sizes = get_separations(sides,plot_class)
+
+        #Get probable boundary scale
+        #TODO: Can improve this definition of scale
+        boundary_scale = np.max(sizes)/5.0
+        boundary_scale = plot_class.pc_to_sep(boundary_scale)
+
+        #Shade region beyond which edge effects play role
+        axs[i,j].axvspan(boundary_scale,axs_limits[1],alpha=0.3,color='#8D717490')
+        
+
+            
+
+        #Plot stuff
+        #X-labels only on bottom row
+        if(i==2):
+            axs[i,j].set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
+        #Y-labels only on left column
+        if(j == 0):
+            axs[i,j].set_ylabel(r"$\omega_{\mathrm{LS}}\left(\theta \right)$")
+        axs[i,j].set_xscale('log')
+        axs[i,j].callbacks.connect("xlim_changed", plot_class.axs_to_parsec)
+        axs[i,j].legend()
+
+        #Secondary axis label only for top row
+        if(i==0):
+            ax2.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
+
+        
+        axs[i,j].text(0.1,0.1,r'$\mathrm{NGC}$'+' '+r'${}$'.format(galaxy_name.split('_')[1]),
+            transform=axs[i,j].transAxes)
+
+        
+        
+
+        
+
+        #Get position of subplot
+        j +=1
+        if(j==4):
+            j = 0
+            i +=1
+
+
+    if(save):
+        if(function == 'piecewise'):
+            filename = outdir+'Combined_TPCF_MCMC_Final.pdf'
+        elif(function == 'singlepl') :
+            filename = outdir+'Combined_TPCF_MCMC_Final.pdf'
+        elif(function == 'singletrunc'):
+            filename = outdir+'Combined_TPCF_MCMC_Final.pdf'
+        elif(function == 'doubletrunc'):
+            filename = outdir+'Combined_TPCF_MCMC_Final.pdf'
+        elif(function == 'best'):
+            filename = outdir+'Combined_TPCF_MCMC_Final.pdf'
+        plt.savefig(filename,bbox_inches='tight')
+        plt.close()
+    else :
+        plt.show()
+
+
+def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='masked',function='best'):
+    """
+    Read MCMC samplers and plot the TPCF with best fit power law for all galaxies. 
+
+    Parameters: 
+        save: 
+        Flag to save the plot
+        outdir: 
+            Output directory in which to store plot. Default is results directory.
+        indir :
+            Input directory from which to read the results. Default is results directory.
+        method : 
+            Method for which TPCF's have been computed.
+        function:
+            Function fitted using MCMC: piecewise or singlepl or best among both
+    Returns:
+        None
+
+
+    """
+
+    print("Plotting Combined TPCF plot of 1+ omega with MCMC fits using a {} function.".format(function))
+
+    #Create figure and axs instance
+    fig,axs = plt.subplots(nrows=3,ncols=4,figsize=(16,12))
+
+    if(indir == None):
+        indir = os.path.abspath('../Results/Galaxies/')+'/'
+        method_dir = ''
+    else :
+        method_dir = None
+
+    #Directories
+    indir = os.path.abspath(indir)+'/'
+    outir = os.path.abspath(outdir)+'/'
+
+    if(method_dir is not None):
+        if(method.upper() == 'MASKED'):
+            method_dir = 'Masked/'
+        elif(method.upper() == 'UNIFORM'):
+            method_dir = 'Uniform/'
+        elif(method.upper() == 'MASKED_RADIAL'):
+            method_dir = 'Masked_Radial/'
+        else:
+            raise myError("Method not recognised.")
+
+    if(function not in ['piecewise','singlepl','best','singletrunc','doubletrunc']):
+        raise ValueError("Function should be either piecewise or singlepl or best.")
+
+    i,j = 0,0            
+    #Loop through the galaxies
+    galaxy_function = function
+    for galaxy_name in list_of_galaxies:
+        if(method_dir == None):
+            galaxy_dir = indir+galaxy_name+'/'            
+        else :
+            galaxy_dir = indir+galaxy_name+'/'+method_dir
+
+        galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
+
+        #Find no of samples to which MCMC was fitted
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        nsamples = np.size(corr_fit)
+
+
+        if(function == 'best'):
+            #Choose best function based on AIC value
+            #AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples)
+            AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples,omega1=True)
+            galaxy_functions = ['singlepl','piecewise','singletrunc','doubletrunc']
+            galaxy_AIC = [AIC_single,AIC_piecewise,AIC_single_trunc,AIC_double_trunc] 
+            galaxy_function = galaxy_functions[np.argmin(galaxy_AIC)] 
+        else:
+            galaxy_function = function
+
+
+        if(galaxy_function == 'piecewise'):
+            
+            sampler = loadObj(galaxy_dir+'/Omega1/PiecePL_MCMC/'+'MCMC_sampler')
+        elif(galaxy_function == 'singlepl') :
+            sampler = loadObj(galaxy_dir+'/Omega1/SinglePL_MCMC/'+'MCMC_sampler')
+        elif(galaxy_function == 'singletrunc') :
+            sampler = loadObj(galaxy_dir+'/Omega1/SingleTrunc_MCMC/'+'MCMC_sampler')
+        elif(galaxy_function == 'doubletrunc') :
+            sampler = loadObj(galaxy_dir+'/Omega1/PiecewiseTrunc_MCMC/'+'MCMC_sampler')
+            
+        
+        samples = sampler.flatchain
+        galaxy_class.fit_values = samples[np.argmax(sampler.flatlnprobability)]
+        galaxy_class.fit_errors = samples.std(axis=0)
+        plot_class = myPlot(galaxy_class)
+
+        #Secondary axis
+        separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+        separation_bins = separation_bins.astype(np.float)
+        plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
+
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
+            
+        axs[i,j].set_yscale('log')
+        axs[i,j].errorbar(separation_bins,1+corr_fit,yerr=dcorr_fit,
+            fmt='.-',lw=0.2)
+        
+        #Set X-Axis Limits
+        distance = galaxy_class.distance*const.Parsec*1.e6
+        axs_limits = [0.0,0.0]
+        axs_limits[0] =  global_axes_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
+        axs_limits[1] =  global_axes_limits[1]*const.Parsec/distance*u.radian.to(u.arcsec)
+        axs[i,j].set_xlim(axs_limits[0],axs_limits[1])
+
+        ls = '-'
+        lw = 0.2
+        lc = 'k'
+
+        ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
+        
+        #Fit plot
+        if(galaxy_function == 'piecewise'):
+            break_theta = np.exp(galaxy_class.fit_values[3])
+            break_theta_error = np.exp(galaxy_class.fit_errors[3])
+            axs[i,j].plot(plot_points,np.exp(linear_function(plot_points,galaxy_class.fit_values[0],
+                galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3])),
+                ls=ls,label='fit',color=lc,lw=lw)
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+                label=r'$\alpha_1 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[1],galaxy_class.fit_errors[1]))
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+                label=r'$\alpha_2 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[2],galaxy_class.fit_errors[2]))
+            axs[i,j].axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
+                break_theta_error))
+        
+        elif(galaxy_function == 'singlepl'):
+
+            axs[i,j].plot(plot_points,np.exp(onepowerlaw_function(plot_points,galaxy_class.fit_values[0],
+            galaxy_class.fit_values[1])),
+            label='fit',ls=ls,lw=lw,color=lc)
+
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+                label=r'$\alpha_1 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[1],
+                    galaxy_class.fit_errors[1]))
+        
+        elif(galaxy_function == 'singletrunc'):
+            axs[i,j].plot(plot_points,np.exp(linear_truncation(plot_points,galaxy_class.fit_values[0],
+                galaxy_class.fit_values[1],galaxy_class.fit_values[2])),
+                label='fit',ls=ls,lw=lw,color=lc)
+            theta_c = galaxy_class.fit_values[2]
+            theta_c_error = galaxy_class.fit_errors[2]
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+            label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[1],
+                galaxy_class.fit_errors[1]))
+            axs[i,j].axvline(theta_c,ls=':',label=r'$\theta_c = {:2.1f} \pm {:2.1f}$'.format(theta_c,
+                theta_c_error))
+        
+        elif(galaxy_function == 'doubletrunc'):
+            axs[i,j].plot(plot_points,np.exp(piecewise_truncation(plot_points,galaxy_class.fit_values[0],
+                    galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3],
+                    galaxy_class.fit_values[4])),
+                    label='fit',ls=ls,lw=lw,color=lc)
+            break_theta = np.exp(galaxy_class.fit_values[3])
+            break_theta_error = np.exp(galaxy_class.fit_errors[3])
+            theta_c = galaxy_class.fit_values[4]
+            theta_c_error = galaxy_class.fit_errors[4]
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+            label=r'$\alpha_1 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[1],
+                galaxy_class.fit_errors[1]))
+            axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
+                label=r'$\alpha_2 = {:2.1f} \pm {:2.1f}$'.format(galaxy_class.fit_values[2],
+                galaxy_class.fit_errors[2]))
+            axs[i,j].axvline(break_theta,ls=':',label=r'$\beta = {:2.1f} \pm {:2.1f}$'.format(break_theta,
+                break_theta_error))
+
+            axs[i,j].axvline(theta_c,ls=':',label=r'$\theta_c = {:2.1f} \pm {:2.1f}$'.format(theta_c,
+                theta_c_error))
+
+            
+        #Figure out edge effect region
+        region = read_ds9(galaxy_class.region_file)
+        hdu = fits.open(galaxy_class.fits_file)[0]
+        wcs = WCS(hdu.header)
+        ra_dec = SkyCoord.from_name(galaxy_class.name)
+        xpix_c,ypix_c = wcs.all_world2pix(ra_dec.ra.value,ra_dec.dec.value,0)
+
+        for k in range(0,np.size(region)):
+            region_dep = deproject_region_centre(region,k,xpix_c,ypix_c,galaxy_class)
+            if(region_dep is not None):
+                sides = region_dep.to_sky(wcs).vertices
+                sizes = get_separations(sides,plot_class)
+
+        #Get probable boundary scale
+        #TODO: Can improve this definition of scale
+        boundary_scale = np.max(sizes)/5.0
+        boundary_scale = plot_class.pc_to_sep(boundary_scale)
+
+        #Shade region beyond which edge effects play role
+        axs[i,j].axvspan(boundary_scale,axs_limits[1],alpha=0.3,color='#8D717490')
+        
+
+
+
+        #Plot stuff
+        #X-labels only on bottom row
+        if(i==2):
+            axs[i,j].set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
+        #Y-labels only on left column
+        if(j == 0):
+            axs[i,j].set_ylabel(r"$1+\omega_{\mathrm{LS}}\left(\theta \right)$")
+        axs[i,j].set_xscale('log')
+        axs[i,j].callbacks.connect("xlim_changed", plot_class.axs_to_parsec)
+        axs[i,j].legend()
+
+        #Secondary axis label only for top row
+        if(i==0):
+            ax2.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
+
+        
+        axs[i,j].text(0.1,0.1,r'$\mathrm{NGC}$'+' '+r'${}$'.format(galaxy_name.split('_')[1]),
+            transform=axs[i,j].transAxes)
+
+        
+        
+
+        
+
+        #Get position of subplot
+        j +=1
+        if(j==4):
+            j = 0
+            i +=1
+
+
+    if(save):
+        filename = outdir+'Combined_TPCF_Omega1Final.pdf'
+        plt.savefig(filename,bbox_inches='tight')
+        plt.close()
+    else :
+        plt.show()
+
+
 def Combined_Clusters_BreakView(save=False,outdir='../Results/',indir=None,method='masked'):
 
     print("Plotting spatial positions of clusters in all galaxies")
@@ -1258,6 +1776,19 @@ def deproject_region_centre(region,i,xpix_c,ypix_c,galaxy_class):
         y[i] = region_rotated.vertices[i].y
     regions_dep = regions.PolygonPixelRegion(vertices=regions.PixCoord(x=x,y=y))    
     return regions_dep
+
+def get_separations(sides,pl):
+    i = 0
+    sizes = []
+    while i<np.size(sides):
+        if(i == np.size(sides)-1):
+            s = sides[0].separation(sides[i]).arcsec
+        else:
+            s = sides[i+1].separation(sides[i]).arcsec
+        s = pl.sep_to_pc(s)
+        sizes.append(s)
+        i = i+1
+    return sizes
 
 
 
