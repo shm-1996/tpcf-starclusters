@@ -506,9 +506,10 @@ def two_point(data, bins, method='standard',
 
     # shuffle all but one axis to get background distribution
     if data_R is None:
-        data_R = data.copy()
-        for i in range(n_features - 1):
-            rng.shuffle(data_R[:, i])
+        ra_R, dec_R = uniform_sphere((min(data[:,0]), max(data[:,0])),
+                                     (min(data[:,1]), max(data[:,1])),
+                                     2 * len(data[:,0]))
+        data_R = np.asarray(ra_dec_to_xyz(ra_R, dec_R), order='F').T        
     else:
         data_R = np.asarray(data_R)
         if (data_R.ndim != 2) or (data_R.shape[-1] != n_features):
