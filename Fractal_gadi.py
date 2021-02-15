@@ -28,7 +28,7 @@ max_level_high = 14
 fractal_dims = [0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0]
 sizes = [0.1,0.2,0.3,0.4,0.5,0.6]
 filename = '../Toy_Models/Fractals/Fractal_Analysis.out'
-max_points = 500000
+max_points = 50000
 MC_min = 2500
 
 ############################################################################################
@@ -461,6 +461,60 @@ def Fractal_Table_Parallel(overwrite=False):
     results = Parallel(n_jobs=-1,prefer='processes',verbose=1)(map(delayed(Fractal_Table_OneD),
             fractal_dims,repeat(overwrite)))    
 
+def uniform_sphere(RAlim, DEClim, size=1):
+    """Draw a uniform sample on a sphere
+
+    Parameters
+    ----------
+    RAlim : tuple
+        select Right Ascension between RAlim[0] and RAlim[1]
+        units are degrees
+    DEClim : tuple
+        select Declination between DEClim[0] and DEClim[1]
+    size : int (optional)
+        the size of the random arrays to return (default = 1)
+
+    Returns
+    -------
+    RA, DEC : ndarray
+        the random sample on the sphere within the given limits.
+        arrays have shape equal to size.
+    """
+    zlim = np.sin(np.pi * np.asarray(DEClim) / 180.)
+
+    z = zlim[0] + (zlim[1] - zlim[0]) * np.random.random(size)
+    DEC = (180. / np.pi) * np.arcsin(z)
+    RA = RAlim[0] + (RAlim[1] - RAlim[0]) * np.random.random(size)
+
+    return RA, DEC
+
+def fill_space(x,y,size=1):
+    xlim = [np.min(x),np.max(x)]
+    ylim = [np.min(y),np.max(y)]
+    xr = xlim[0] + (xlim[1]-xlim[0])*np.random.random(size)
+    yr = ylim[0] + (ylim[1]-ylim[0])*np.random.random(size)
+    return xr,yr
+
+def ra_dec_to_xyz(ra, dec):
+    """Convert ra & dec to Euclidean points
+
+    Parameters
+    ----------
+    ra, dec : ndarrays
+
+    Returns
+    x, y, z : ndarrays
+    """
+    sin_ra = np.sin(ra * np.pi / 180.)
+    cos_ra = np.cos(ra * np.pi / 180.)
+
+    sin_dec = np.sin(np.pi / 2 - dec * np.pi / 180.)
+    cos_dec = np.cos(np.pi / 2 - dec * np.pi / 180.)
+
+    return (cos_ra * sin_dec,
+            sin_ra * sin_dec,
+            cos_dec)
+
 
 def two_point(data, bins, method='standard',
               data_R=None, random_state=None):
@@ -506,10 +560,9 @@ def two_point(data, bins, method='standard',
 
     # shuffle all but one axis to get background distribution
     if data_R is None:
-        ra_R, dec_R = uniform_sphere((min(data[:,0]), max(data[:,0])),
-                                     (min(data[:,1]), max(data[:,1])),
-                                     2 * len(data[:,0]))
-        data_R = np.asarray(ra_dec_to_xyz(ra_R, dec_R), order='F').T        
+        data_R = data.copy()
+        for i in range(n_features - 1):
+            rng.shuffle(data_R[:, i])     
     else:
         data_R = np.asarray(data_R)
         if (data_R.ndim != 2) or (data_R.shape[-1] != n_features):
@@ -572,7 +625,7 @@ def two_point(data, bins, method='standard',
 
 def bootstrap_two_point(data, bins, Nbootstrap=10,
                         method='standard', return_bootstraps=False,
-                        random_state=None):
+                        random_state=None,random_type='uniform'):
     """Bootstrapped two-point correlation function
 
     Parameters
@@ -626,12 +679,30 @@ def bootstrap_two_point(data, bins, Nbootstrap=10,
     bootstraps = np.zeros((Nbootstrap, len(corr)))
     
     data_boot = np.zeros((Nbootstrap,n_samples,n_features))
+    data_R = np.zeros((Nbootstrap,n_samples,n_features))
     for i in range(Nbootstrap):
         indices = rng.randint(0, n_samples, n_samples)
         data_boot[i] = data[indices,:]
-
+        if(random_type=='uniform'):
+            ra_R, dec_R = uniform_sphere((min(data[:,0]), max(data[:,0])),
+                                         (min(data[:,1]), max(data[:,1])),
+                                         len(data[:,0]))
+            random_arr = np.asarray((ra_R, dec_R), order='F').T
+            data_R[i] = random_arr
+        elif(random_type == 'random'):
+            ra_R,dec_R = fill_space(data[:,0],data[:,1],size=len(data[:,0]))
+            random_arr = np.asarray((ra_R, dec_R), order='F').T
+            data_R[i] = random_arr
+        elif(random_type == 'default'):
+            data_Rdefault = data.copy()
+            for i in range(n_features - 1):
+                rng.shuffle(data_Rdefault[:, i])
+            data_R[i] = data_Rdefault
+                   
+        else:
+            raise ValueError("Random type is undefined.")
     results = Parallel(n_jobs=-1,prefer='processes',verbose=0)(map(delayed(two_point),
-        data_boot,repeat(bins),repeat(method),repeat(None),repeat(rng)))
+        data_boot,repeat(bins),repeat(method),data_R,repeat(rng)))
     bootstraps = results
     
     # use masked std dev in case of NaNs
@@ -722,24 +793,18 @@ if __name__ == "__main__":
     # time the script
     start_time = timeit.default_timer()
     
-    fractal_dim = 1.3
-    xfractal,yfractal,bins_full,corr_full,dcorr_full = loadObj('../Toy_Models/Fractals/Gadi/D_{}'.format(int(fractal_dim*10.0)))
-    MC_directory = '../Toy_Models/Fractals/Monte_Carlo_Boundaries/Fractal_{}/'.format(fractal_dim)
-    TPCF_MC(xfractal,yfractal,0.2,N_MC=30,MC_directory=MC_directory)
+    fractal_dim = 1.0
+    Analyse_Fractal(fractal_dim,max_level=14)
 
-    fractal_dim = 1.7
-    xfractal,yfractal,bins_full,corr_full,dcorr_full = loadObj('../Toy_Models/Fractals/Gadi/D_{}'.format(int(fractal_dim*10.0)))
-    MC_directory = '../Toy_Models/Fractals/Monte_Carlo_Boundaries/Fractal_{}/'.format(fractal_dim)
-    TPCF_MC(xfractal,yfractal,0.2,N_MC=30,MC_directory=MC_directory)
-    TPCF_MC(xfractal,yfractal,0.1,N_MC=30,MC_directory=MC_directory)
-    TPCF_MC(xfractal,yfractal,0.05,N_MC=30,MC_directory=MC_directory)
+    fractal_dim = 0.9
+    Analyse_Fractal(fractal_dim,max_level=14)
 
-    fractal_dim = 1.6
-    xfractal,yfractal,bins_full,corr_full,dcorr_full = loadObj('../Toy_Models/Fractals/Gadi/D_{}'.format(int(fractal_dim*10.0)))
-    MC_directory = '../Toy_Models/Fractals/Monte_Carlo_Boundaries/Fractal_{}/'.format(fractal_dim)
-    TPCF_MC(xfractal,yfractal,0.2,N_MC=30,MC_directory=MC_directory)
-    TPCF_MC(xfractal,yfractal,0.1,N_MC=30,MC_directory=MC_directory)
-    TPCF_MC(xfractal,yfractal,0.05,N_MC=30,MC_directory=MC_directory)
+    fractal_dim = 0.5
+    Analyse_Fractal(fractal_dim,max_level=14)
+
+    fractal_dim = 1.1
+    Analyse_Fractal(fractal_dim,max_level=14)
+    
 
 
     # time the script
