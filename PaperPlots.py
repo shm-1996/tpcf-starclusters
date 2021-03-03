@@ -207,8 +207,8 @@ def Combined_TPCF_CompareAges(save=False,outdir='../Results/',indir=None,method=
         dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
         separation_bins = separation_bins[indices].astype(np.float)
             
-        axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
-            fmt='.-',color='#AAF54590',label=r'$\mathrm{All} \, T$')
+        axs[i,j].errorbar(separation_bins,1+corr_fit,yerr=dcorr_fit,
+            fmt='.-',lw=0.2,color='#AAF54590',label=r'$\mathrm{All} \, T$')
 
         ########################################
         ages = galaxy_class.get_cluster_ages()
@@ -236,8 +236,8 @@ def Combined_TPCF_CompareAges(save=False,outdir='../Results/',indir=None,method=
         separation_bins = separation_bins.astype(np.float)
         
         
-        axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
-            fmt='.-',color='#F56B5C90',label=r'$T < 10 \, \mathrm{Myr}$')
+        axs[i,j].errorbar(separation_bins,1+corr_fit,yerr=dcorr_fit,
+            fmt='.-',lw=0.2,color='#F56B5C90',label=r'$T < 10 \, \mathrm{Myr}$')
         ########################################
         galaxy_class.get_ra_dec()
         #Old Clusters: T> 10 Myr
@@ -260,8 +260,8 @@ def Combined_TPCF_CompareAges(save=False,outdir='../Results/',indir=None,method=
         separation_bins = separation_bins[indices].astype(np.float)
         separation_bins = separation_bins.astype(np.float)
 
-        axs[i,j].errorbar(separation_bins,corr_fit,yerr=dcorr_fit,
-            fmt='.-',color='#4591F590',label=r'$T > 10 \, \mathrm{Myr}$')
+        axs[i,j].errorbar(separation_bins,1+corr_fit,yerr=dcorr_fit,
+            fmt='.-',lw=0.2,color='#4591F590',label=r'$T > 10 \, \mathrm{Myr}$')
 
         # General Plot stuff
         #X-labels only on bottom row
@@ -269,7 +269,7 @@ def Combined_TPCF_CompareAges(save=False,outdir='../Results/',indir=None,method=
             axs[i,j].set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
         #Y-labels only on left column
         if(j == 0):
-            axs[i,j].set_ylabel(r"$\omega_{\mathrm{LS}}\left(\theta \right)$")
+            axs[i,j].set_ylabel(r"$1+\omega_{\mathrm{LS}}\left(\theta \right)$")
         axs[i,j].set_xscale('log')
         axs[i,j].callbacks.connect("xlim_changed", plot_class.axs_to_parsec)
         axs[i,j].legend()
@@ -754,7 +754,7 @@ def Combined_Clusters_FOV(save=False,outdir='../Results/',indir=None,method='mas
     print("Plotting spatial positions of clusters in all galaxies with relavant scales annotated.")
 
     #Create figure and axs instance
-    fig = plt.figure(figsize=(20,16),constrained_layout=True)
+    fig = plt.figure(figsize=(40,20),tight_layout=True)
 
     if(indir == None):
         indir = os.path.abspath('../Results/Galaxies/')+'/'
@@ -794,7 +794,7 @@ def Combined_Clusters_FOV(save=False,outdir='../Results/',indir=None,method='mas
         hdu = fits.open(galaxy_class.fits_file)[0]
         wcs = WCS(hdu.header)
 
-        ax1 = plt.subplot2grid((3,4),(i,j),fig=fig)
+        ax1 = plt.subplot2grid((4,3),(i,j),fig=fig)
 
         x = galaxy_class.ra*3600.0
         y = galaxy_class.dec*3600.0
@@ -831,8 +831,14 @@ def Combined_Clusters_FOV(save=False,outdir='../Results/',indir=None,method='mas
         ax1.set_xlim(xmin,xmax)
         ax1.set_ylim(ymin,ymax)
 
+        # #Set aspect ratio
+        # display_aspect = 0.85
+        # data_aspect = (ymax-ymin)/(xmax-xmin)
+        # aspect = display_aspect/data_aspect
+        # ax1.set_aspect(aspect=aspect)
+
         im1 = ax1.scatter(x-xcen,y-ycen,s=10,c=np.log10(ages),alpha=0.5,cmap=cmap,lw=0.3)
-        cbar = fig.colorbar(im1,ax = ax1,use_gridspec=False,
+        cbar = fig.colorbar(im1,ax = ax1,use_gridspec=True,
                             orientation='vertical',pad=0.00,aspect=30)
         
 
@@ -856,19 +862,7 @@ def Combined_Clusters_FOV(save=False,outdir='../Results/',indir=None,method='mas
                                         transform=ax1.transAxes)
         ax1.add_line(scale)
         ax1.annotate(r'$50^{\prime \prime} = %d \, \mathrm{pc}$'%length,(0.65,0.15),xycoords='axes fraction',
-                            fontsize=12)
-        
-        #Draw cutoff scale as a circular patch
-        cutoff_scale,cutoff_error = Get_Cutoff_Scale(galaxy_class,function='best')
-        
-        length = plot_class.sep_to_pc(cutoff_scale)
-        no_pixels = np.abs(length/length_per_pixel)
-        no_pixels = no_pixels/total_pixels
-        cutoff = mpl.patches.Circle((0.4,0.8),radius=cutoff_scale,
-                                   fill=False,ls='--',lw=2.0,color='#F9004A',
-                                   label='cutoff')
-        ax1.add_artist(cutoff)
-        
+                            fontsize=12)        
 
         #Draw FOV
         for k in range(0,np.size(region)):
@@ -877,47 +871,37 @@ def Combined_Clusters_FOV(save=False,outdir='../Results/',indir=None,method='mas
                 region_sky = region_dep.to_sky(wcs)
                 xy = np.vstack([region_sky.vertices.ra.value*3600.0-xcen,
                                 region_sky.vertices.dec.value*3600.0-ycen]).transpose()
-                patch = mpl.patches.Polygon(xy=xy,fill=False,color='k',label='FOV')
+                patch = mpl.patches.Polygon(xy=xy,fill=False,color='k',alpha=0.7,label='FOV')
                 ax1.add_patch(patch)
                 sides = region_dep.to_sky(wcs).vertices
                 sizes = get_separations(sides,plot_class)
 
-        #Draw probable boundary scale
-        boundary_scale = np.max(sizes)/6.0
-        boundary_scale = plot_class.pc_to_sep(boundary_scale)
-        length = boundary_scale
-        no_pixels = np.abs(length/length_per_pixel)
-        no_pixels = no_pixels/total_pixels
-        boundary = mpl.patches.Circle((0.4,0.8),radius=length,
-                                   fill=False,ls='--',lw=2.0,color='#EE24F6',
-                                   label='boundary')
-        ax1.add_artist(boundary)
 
 
-        if(i==2):
+        if(i==3):
             ax1.set_xlabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
 
         if(j==0):
             ax1.set_ylabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
 
-        if(j==3):    
+        if(j==2):    
             cbar.ax.set_ylabel(r"$\log_{10} \, \mathrm{Age} \, (\mathrm{yr})$",
                 rotation=90,labelpad=5,fontsize=20)
         
         ax1.text(0.1,0.1,r'$\mathrm{NGC}$'+' '+r'${}$'.format(galaxy_name.split('_')[1]),
             transform=ax1.transAxes)
 
+
         #Get position of subplot
         #Get position of subplot
         j +=1
-        if(j==4):
+        if(j==3):
             j = 0
             i +=1
 
-
     if(save):
-        filename = outdir+'Combined_Clusters_Scales.pdf'
-        plt.savefig(filename,bbox_inches='tight')
+        filename = outdir+'Combined_Clusters_FOV.pdf'
+        plt.savefig(filename,bbox_inches='tight',aspect='auto')
         plt.close()
     else :
         plt.show()
@@ -1417,7 +1401,7 @@ def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='maske
     print("Plotting Combined TPCF plot of 1+ omega with MCMC fits using a {} function.".format(function))
 
     #Create figure and axs instance
-    fig,axs = plt.subplots(nrows=3,ncols=4,figsize=(16,12))
+    fig,axs = plt.subplots(nrows=4,ncols=3,figsize=(12,16))
 
     if(indir == None):
         indir = os.path.abspath('../Results/Galaxies/')+'/'
@@ -1463,8 +1447,11 @@ def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='maske
             #Choose best function based on AIC value
             #AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples)
             AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples,omega1=True)
-            galaxy_functions = ['singlepl','piecewise','singletrunc','doubletrunc']
-            galaxy_AIC = [AIC_single,AIC_piecewise,AIC_single_trunc,AIC_double_trunc] 
+            #galaxy_functions = ['singlepl','piecewise','singletrunc','doubletrunc']
+            galaxy_functions = ['singlepl','piecewise','singletrunc']
+            #galaxy_AIC = [AIC_single,AIC_piecewise,AIC_single_trunc,AIC_double_trunc] 
+            galaxy_AIC = [AIC_single,AIC_piecewise,AIC_single_trunc] 
+
             galaxy_function = galaxy_functions[np.argmin(galaxy_AIC)] 
         else:
             galaxy_function = function
@@ -1491,7 +1478,8 @@ def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='maske
         separation_bins = separation_bins.astype(np.float)
         plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
 
-        indices = np.where(galaxy_class.corr>0.0)
+        indices = np.where(np.logical_and(galaxy_class.corr>0.0,
+            galaxy_class.corr>galaxy_class.dcorr))
         corr_fit = galaxy_class.corr[indices].astype(np.float)
         dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
         separation_bins = separation_bins[indices].astype(np.float)
@@ -1519,7 +1507,7 @@ def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='maske
             break_theta_error = np.exp(galaxy_class.fit_errors[3])
             axs[i,j].plot(plot_points,np.exp(linear_function(plot_points,galaxy_class.fit_values[0],
                 galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3])),
-                ls=ls,label='fit',color=lc,lw=lw)
+                ls=ls,color=lc,lw=lw)
             axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
                 label=r'$\alpha_1 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[1],galaxy_class.fit_errors[1]))
             axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
@@ -1531,7 +1519,7 @@ def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='maske
 
             axs[i,j].plot(plot_points,np.exp(onepowerlaw_function(plot_points,galaxy_class.fit_values[0],
             galaxy_class.fit_values[1])),
-            label='fit',ls=ls,lw=lw,color=lc)
+            ls=ls,lw=lw,color=lc)
 
             axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
                 label=r'$\alpha_1 = {:2.1f} \pm {:3.2f}$'.format(galaxy_class.fit_values[1],
@@ -1540,7 +1528,7 @@ def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='maske
         elif(galaxy_function == 'singletrunc'):
             axs[i,j].plot(plot_points,np.exp(linear_truncation(plot_points,galaxy_class.fit_values[0],
                 galaxy_class.fit_values[1],galaxy_class.fit_values[2])),
-                label='fit',ls=ls,lw=lw,color=lc)
+                ls=ls,lw=lw,color=lc)
             theta_c = galaxy_class.fit_values[2]
             theta_c_error = galaxy_class.fit_errors[2]
             axs[i,j].plot(separation_bins,corr_fit,lw=0.0,
@@ -1553,7 +1541,7 @@ def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='maske
             axs[i,j].plot(plot_points,np.exp(piecewise_truncation(plot_points,galaxy_class.fit_values[0],
                     galaxy_class.fit_values[1],galaxy_class.fit_values[2],galaxy_class.fit_values[3],
                     galaxy_class.fit_values[4])),
-                    label='fit',ls=ls,lw=lw,color=lc)
+                    ls=ls,lw=lw,color=lc)
             break_theta = np.exp(galaxy_class.fit_values[3])
             break_theta_error = np.exp(galaxy_class.fit_errors[3])
             theta_c = galaxy_class.fit_values[4]
@@ -1597,7 +1585,7 @@ def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='maske
 
         #Plot stuff
         #X-labels only on bottom row
-        if(i==2):
+        if(i==3):
             axs[i,j].set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
         #Y-labels only on left column
         if(j == 0):
@@ -1621,7 +1609,7 @@ def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='maske
 
         #Get position of subplot
         j +=1
-        if(j==4):
+        if(j==3):
             j = 0
             i +=1
 
@@ -1634,9 +1622,9 @@ def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='maske
         plt.show()
 
 
-def Combined_Clusters_BreakView(save=False,outdir='../Results/',indir=None,method='masked'):
+def Combined_Clusters_AllScales(save=False,outdir='../Results/',indir=None,method='masked'):
 
-    print("Plotting spatial positions of clusters in all galaxies")
+    print("Plotting spatial positions of clusters in all galaxies with relavant scales annotated.")
 
     #Create figure and axs instance
     fig = plt.figure(figsize=(20,16),constrained_layout=True)
@@ -1675,22 +1663,49 @@ def Combined_Clusters_BreakView(save=False,outdir='../Results/',indir=None,metho
         ages = galaxy_class.get_cluster_ages()
         galaxy_class.get_ra_dec()
         cmap = cmr.waterlily
+        region = read_ds9(galaxy_class.region_file)
+        hdu = fits.open(galaxy_class.fits_file)[0]
+        wcs = WCS(hdu.header)
 
-        ax1 = plt.subplot2grid((3,4),(i,j),fig=fig)
+        ax1 = plt.subplot2grid((4,3),(i,j),fig=fig)
 
         x = galaxy_class.ra*3600.0
         y = galaxy_class.dec*3600.0
 
-        #Get central pixel values
-        xcen = (np.min(x)+np.max(x))/2.
-        ycen = (np.min(y)+np.max(y))/2.
+
+        #Get galaxy centre pixel coordinates
+        ra_dec = SkyCoord.from_name(galaxy_class.name)
+        xpix_c,ypix_c = wcs.all_world2pix(ra_dec.ra.value,ra_dec.dec.value,0)
+        
+        # #Loop over FOV regions to get min/max values after deprojecting
+        # xmin,ymin = 1.e10,1.e10
+        # xmax,ymax = -1.e10,-1.e10
+        # for k in range(0,np.size(region)):
+        #     region_dep = deproject_region_centre(region,k,xpix_c,ypix_c,galaxy_class)    
+        #     if(region_dep is not None):
+        #         region_sky = region_dep.to_sky(wcs)
+        #         xtemp,ytemp = np.min(region_sky.vertices.ra.value),np.min(region_sky.vertices.dec.value)
+        #         xmin,ymin = min(xtemp,xmin),min(ymin,ytemp)
+        #         xtemp,ytemp = np.max(region_sky.vertices.ra.value),np.max(region_sky.vertices.dec.value)
+        #         xmax,ymax = max(xtemp,xmin),max(ymin,ytemp)
+
+        # #Convert to arcsec
+        # xmin,ymin,xmax,ymax = xmin*3600,ymin*3600,xmax*3600,ymax*3600
+        # #Get central pixel values
+        # xcen = (xmin+xmax)/2.
+        # ycen = (ymin+ymax)/2.
+
+        xmin,xmax = np.min(x),np.max(x)
+        ymin,ymax = np.min(y),np.max(y)
+        xcen = (xmin+xmax)/2.
+        ycen = (ymin+ymax)/2.
 
         #Scale offset around bounding box to ~ 5% of axes width
         offset_x = (np.max(x)-np.min(x))*0.05
         offset_y = (np.max(y)-np.min(y))*0.05
 
-        xmin,xmax = np.min(x)-offset_x-xcen, np.max(x)+offset_x-xcen
-        ymin,ymax = np.min(y)-offset_y-ycen, np.max(y)+offset_y-ycen
+        xmin,xmax = xmin-offset_x-xcen, xmax+offset_x-xcen
+        ymin,ymax = ymin-offset_y-ycen, ymax+offset_y-ycen
         ax1.set_xlim(xmin,xmax)
         ax1.set_ylim(ymin,ymax)
 
@@ -1722,24 +1737,48 @@ def Combined_Clusters_BreakView(save=False,outdir='../Results/',indir=None,metho
                             fontsize=12)
         
         #Draw cutoff scale as a circular patch
-        cutoff_scale,cutoff_error = Get_Cutoff_Scale(galaxy_class,function='best')
+        cutoff_scale,cutoff_error = Get_Cutoff_Scale(galaxy_class,function='best',omega1=True)
         
         length = plot_class.sep_to_pc(cutoff_scale)
         no_pixels = np.abs(length/length_per_pixel)
         no_pixels = no_pixels/total_pixels
-        cutoff = mpl.patches.Circle((0.4,0.8),radius=cutoff_scale/2.,
-                                   fill=False,ls='--',lw=2.0,color='#F9004A')
+        cutoff = mpl.patches.Circle((0.4,0.8),radius=cutoff_scale,
+                                   fill=False,ls='--',lw=2.0,alpha=0.7,color='#F9004A',
+                                   label='cutoff')
         ax1.add_artist(cutoff)
         
 
+        #Draw FOV
+        for k in range(0,np.size(region)):
+            region_dep = deproject_region_centre(region,k,xpix_c,ypix_c,galaxy_class)
+            if(region_dep is not None):
+                region_sky = region_dep.to_sky(wcs)
+                xy = np.vstack([region_sky.vertices.ra.value*3600.0-xcen,
+                                region_sky.vertices.dec.value*3600.0-ycen]).transpose()
+                # patch = mpl.patches.Polygon(xy=xy,fill=False,color='k',label='FOV')
+                # ax1.add_patch(patch)
+                sides = region_dep.to_sky(wcs).vertices
+                sizes = get_separations(sides,plot_class)
 
-        if(i==2):
+        #Draw probable boundary scale
+        boundary_scale = np.max(sizes)/6.0
+        boundary_scale = plot_class.pc_to_sep(boundary_scale)
+        length = boundary_scale
+        no_pixels = np.abs(length/length_per_pixel)
+        no_pixels = no_pixels/total_pixels
+        boundary = mpl.patches.Circle((0.4,0.8),radius=length,
+                                   fill=False,ls='--',lw=2.0,alpha=0.7,color='#EE24F6',
+                                   label='boundary')
+        #ax1.add_artist(boundary)
+
+
+        if(i==3):
             ax1.set_xlabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
 
         if(j==0):
             ax1.set_ylabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
 
-        if(j==3):    
+        if(j==2):    
             cbar.ax.set_ylabel(r"$\log_{10} \, \mathrm{Age} \, (\mathrm{yr})$",
                 rotation=90,labelpad=5,fontsize=20)
         
@@ -1749,17 +1788,155 @@ def Combined_Clusters_BreakView(save=False,outdir='../Results/',indir=None,metho
         #Get position of subplot
         #Get position of subplot
         j +=1
-        if(j==4):
+        if(j==3):
             j = 0
             i +=1
 
 
     if(save):
-        filename = outdir+'Combined_Clusters_BreakView.pdf'
+        filename = outdir+'Combined_Clusters_Scales.pdf'
         plt.savefig(filename,bbox_inches='tight')
         plt.close()
     else :
         plt.show()
+
+def Gaussian_KDE_Clusters(save=False,outdir='../Results/',indir=None,method='masked',log=False):
+
+    import scipy.stats as st
+    from matplotlib import ticker, cm
+
+    print("Plotting KDE of all clusters.")
+
+    #Create figure and axs instance
+    fig,axs = plt.subplots(nrows=4,ncols=3,figsize=(12,16))
+
+    if(indir == None):
+        indir = os.path.abspath('../Results/Galaxies/')+'/'
+        method_dir = ''
+    else :
+        method_dir = None
+
+    #Directories
+    indir = os.path.abspath(indir)+'/'
+    outir = os.path.abspath(outdir)+'/'
+
+    if(method_dir is not None):
+        if(method.upper() == 'MASKED'):
+            method_dir = 'Masked/'
+        elif(method.upper() == 'UNIFORM'):
+            method_dir = 'Uniform/'
+        elif(method.upper() == 'MASKED_RADIAL'):
+            method_dir = 'Masked_Radial/'
+        else:
+            raise myError("Method not recognised.")
+
+
+    i,j = 0,0
+    #Loop through the galaxies
+    for galaxy_name in list_of_galaxies:
+        if(method_dir == None):
+            galaxy_dir = indir+galaxy_name+'/'            
+        else :
+            galaxy_dir = indir+galaxy_name+'/'+method_dir
+
+        galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
+        plot_class = myPlot(galaxy_class)
+
+
+        x = galaxy_class.ra*3600.0
+        y = galaxy_class.dec*3600.0
+
+
+        xmin, xmax = np.min(x),np.max(x)
+        ymin, ymax = np.min(y),np.max(y)
+        #Scale offset around bounding box to ~ 5% of axes width
+        offset_x = (np.max(x)-np.min(x))*0.05
+        offset_y = (np.max(y)-np.min(y))*0.05
+
+        #Convert to separation
+        xcen = (xmin+xmax)/2.
+        ycen = (ymin+ymax)/2.
+        x = x-xcen
+        y = y-ycen
+        xmin, xmax = np.min(x)-offset_x,np.max(x)+offset_x
+        ymin, ymax = np.min(y)-offset_y,np.max(y)+offset_y
+
+        #Estimate Gaussian Kernel
+        xx, yy = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
+        positions = np.vstack([xx.ravel(), yy.ravel()])
+        values = np.vstack([x, y])
+        kernel = st.gaussian_kde(values,bw_method='silverman')
+
+        #Evaluate KDE values
+        f = np.reshape(kernel(positions).T, xx.shape)
+
+        axs[i,j].set_xlim(xmin,xmax)
+        axs[i,j].set_ylim(ymin,ymax)
+        if(log):
+            cfset = axs[i,j].contourf(xx, yy, f/np.std(f), locator=ticker.LogLocator(),cmap='Blues')
+            cset = axs[i,j].contour(xx, yy, f/np.std(f), locator=ticker.LogLocator(),colors='k',levels=10)
+        else:
+            cfset = axs[i,j].contourf(xx, yy, f/np.std(f), cmap='Blues')
+            cset = axs[i,j].contour(xx, yy, f/np.std(f), colors='k',levels=10)
+
+        #Colorbar
+        cbar = fig.colorbar(cfset,ax = axs[i,j],use_gridspec=False,
+                            orientation='vertical',pad=0.00,aspect=30)
+
+        # #Draw 50 arcsec scale bar
+        
+        #No of pixels in axes
+        total_pixels = np.int(np.floor(axs[i,j].transData.transform((xmax,ymax))[0]) - \
+        np.floor(axs[i,j].transData.transform((xmin,ymin))[0]))
+        length_per_pixel = (xmax-xmin)/(total_pixels)
+        #Convert to parsec 
+        length_per_pixel = plot_class.sep_to_pc(length_per_pixel)
+
+        length = plot_class.sep_to_pc(50)
+        no_pixels = np.abs(length/length_per_pixel)
+        no_pixels = no_pixels/total_pixels
+
+        scale = lines.Line2D([0.7,0.7+no_pixels],[0.1],
+                                         lw=1,color='black',
+                                        transform=axs[i,j].transAxes)
+        axs[i,j].add_line(scale)
+        axs[i,j].annotate(r'$50^{\prime \prime} = %d \, \mathrm{pc}$'%length,(0.55,0.15),
+            xycoords='axes fraction',
+                            fontsize=12)
+
+        if(i==3):
+            axs[i,j].set_xlabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
+
+        if(j==0):
+            axs[i,j].set_ylabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
+
+        if(j==2):    
+            cbar.ax.set_ylabel(r"$\sigma_\mathrm{KDE}$",
+                rotation=90,labelpad=5,fontsize=20)
+        
+        axs[i,j].text(0.07,0.07,r'$\mathrm{NGC}$'+' '+r'${}$'.format(galaxy_name.split('_')[1]),
+            transform=axs[i,j].transAxes)
+
+        j +=1
+        if(j==3):
+            j = 0
+            i +=1
+
+    if(save):
+        if(log):
+            filename = outdir+'Combined_Clusters_KDELog.pdf'
+        else:
+            filename = outdir+'Combined_Clusters_KDE.pdf'
+        plt.savefig(filename,bbox_inches='tight')
+        plt.close()
+    else :
+        plt.show()
+
+
+
+
+
+
 
 def deproject_region_centre(region,i,xpix_c,ypix_c,galaxy_class):
     #rotate clockwise by angle PA
