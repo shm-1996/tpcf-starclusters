@@ -101,16 +101,16 @@ def Combine_NGC5457():
 
 
     #Combine this with SE
-    ra_combined,dec_combined = Combined_file[:,3],Combined_file[:,4]
-    file_new = file_se
-    ra_new,dec_new = file_new[:,3],file_new[:,4]
-    #Get intersection
-    ra,ra_1,ra_2 = np.intersect1d(ra_combined,ra_new,return_indices=True)
-    dec,dec_1,dec_2 = np.intersect1d(dec_combined,dec_new,return_indices=True)
-    Duplicate_indices = np.intersect1d(ra_2,dec_2)
-    file_new_updated = np.delete(file_new,Duplicate_indices,axis=0)
-    #Combine
-    Combined_file = np.append(Combined_file,file_new_updated,axis=0)
+    # ra_combined,dec_combined = Combined_file[:,3],Combined_file[:,4]
+    # file_new = file_se
+    # ra_new,dec_new = file_new[:,3],file_new[:,4]
+    # #Get intersection
+    # ra,ra_1,ra_2 = np.intersect1d(ra_combined,ra_new,return_indices=True)
+    # dec,dec_1,dec_2 = np.intersect1d(dec_combined,dec_new,return_indices=True)
+    # Duplicate_indices = np.intersect1d(ra_2,dec_2)
+    # file_new_updated = np.delete(file_new,Duplicate_indices,axis=0)
+    # #Combine
+    # Combined_file = np.append(Combined_file,file_new_updated,axis=0)
 
 
     np.savetxt('../Data/Cluster_Catalogues/NGC_5457.tab',
