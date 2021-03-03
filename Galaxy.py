@@ -623,7 +623,10 @@ class Galaxy(object):
                 self.no_bins = no_bins
                 print("Changing number of bins to {}".format(set_no_bins))
             if(set_bin_limits is not None):
-                self.bin_limits[0],self.bin_limits[1] = float(set_bin_limits[0]),float(set_bin_limits[1])
+                set_bin_limits = list(set_bin_limits)
+                self.bin_limits = list(self.bin_limits)
+                self.bin_limits[0] = float(set_bin_limits[0])
+                self.bin_limits[1] = float(set_bin_limits[1])
                 print("Changing bin limits to {}".format(set_bin_limits))
 
             print("Recomputing bins")
@@ -738,7 +741,7 @@ class Galaxy(object):
     #TODO: MCMC fit. 
     ####################################################################
 
-    def fit_power_law(self,method='bootstrap',function='piecewise',N=1000,use_bounds=True):
+    def fit_power_law(self,method='bootstrap',function='piecewise',N=1000,use_bounds=True,omega1=False):
         """
         Parameters
             filename : string
@@ -790,11 +793,24 @@ class Galaxy(object):
             if(function == 'piecewise'):
                
                 #bounds = ([-10,10],[-3.0,0.0],[-3.0,0.0],[np.log(beta_limits[0]),np.log(beta_limits[1])])
-                popt,pcov = curve_fit(linear_function,separation_bins,
-                    np.log(corr_fit),sigma=dcorr_fit/corr_fit,bounds=bounds)
+                if(omega1):
+                    popt,pcov = curve_fit(linear_function,separation_bins,
+                        np.log(1+corr_fit),sigma=dcorr_fit/(1+corr_fit),bounds=bounds)
+                else:
+                    popt,pcov = curve_fit(linear_function,separation_bins,
+                        np.log(corr_fit),sigma=dcorr_fit/corr_fit,bounds=bounds)
             elif(function == 'smooth'):
                 popt,pcov = curve_fit(smooth_function,separation_bins,
                     corr_fit,sigma=dcorr_fit,bounds=bounds)
+
+            elif(function == 'singletrunc'):
+                if(omega1):
+                    popt,pcov = curve_fit(linear_truncation,separation_bins,
+                                np.log(1+corr_fit),sigma=dcorr_fit/(1+corr_fit),bounds=bounds)
+                else:
+                    popt,pcov = curve_fit(linear_truncation,separation_bins,
+                                np.log(corr_fit),sigma=dcorr_fit/corr_fit,bounds=bounds)
+
                   
             self.fit_values = popt
             self.fit_errors = np.sqrt(np.diag(pcov))
@@ -808,8 +824,12 @@ class Galaxy(object):
                 #Fit to this
                     if(function == 'piecewise'):
                         if(use_bounds == True):
-                            popt,pcov = curve_fit(linear_function,separation_bins,
-                                np.log(y_fit),sigma=dcorr_fit/corr_fit,bounds=bounds)
+                            if(omega1):
+                                popt,pcov = curve_fit(linear_function,separation_bins,
+                                    np.log(1+y_fit),sigma=dcorr_fit/corr_fit,bounds=bounds)
+                            else:
+                                popt,pcov = curve_fit(linear_function,separation_bins,
+                                    np.log(y_fit),sigma=dcorr_fit/corr_fit,bounds=bounds)
                         else:
                             popt,pcov = curve_fit(linear_function,separation_bins,
                                 np.log(y_fit),sigma=dcorr_fit/corr_fit)
@@ -863,9 +883,9 @@ class Galaxy(object):
         self.T_value = float(T_value[index][0].split('(')[0])
 
         if(self.name in ['NGC_1313',]):
-            sfr = np.loadtxt(Legus_Table,usecols=9,delimiter='\t',dtype=str)
-            mstar = np.loadtxt(Legus_Table,usecols=10,delimiter='\t',dtype=str)
-        elif(self.name in ['NGC_3738','NGC_4449','NGC_4656','NGC_6503']):
+            sfr = np.loadtxt(Legus_Table,usecols=10,delimiter='\t',dtype=str)
+            mstar = np.loadtxt(Legus_Table,usecols=11,delimiter='\t',dtype=str)
+        elif(self.name in ['NGC_3738','NGC_4449','NGC_4656','NGC_6503','NGC_5457']):
             sfr = np.loadtxt(Legus_Table,usecols=10,delimiter='\t',dtype=str)
             mstar = np.loadtxt(Legus_Table,usecols=11,delimiter='\t',dtype=str)
         else :
