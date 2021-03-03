@@ -621,6 +621,8 @@ if __name__ == "__main__":
         help='Function to use to fit. Options are "piecewise", "singlepl","singletrunc", and "doubletrunc".')
     ap.add_argument('-omega1',action='store_true',help='Flag to compute fits for 1+omega.')
     ap.add_argument('-fit',action='store_true',help='Flag to fit with an MCMC.')
+    ap.add_argument('-age',action='store',type=str,default=None,
+        help = 'Use for age cuts on clusters. Accepted values are young and old.')
 
     args = vars(ap.parse_args())
     if(args['function'] not in ['piecewise','singlepl','singletrunc','doubletrunc','best']):
@@ -630,6 +632,18 @@ if __name__ == "__main__":
     if(method not in ['uniform','masked','masked_radial']):
         raise ValueError("This method does not exist. Allowed values are "+
             "'Uniform', 'Masked', and 'Masked_Radial'.")
+
+    if(args['age'] is not None):
+        if(args['omega1'] is False)
+            raise ValueError("Omega1 flag should be switched on if age cuts done.")
+        else:
+            if(args['age'].lower() == 'young'):
+                age = 'young'
+            elif(args['age'].lower() == 'old'):
+                age = 'old'
+            else:
+                raise ValueError("Age flag should have value old or young. Please check.")
+
 
     galaxy_input = args['galaxy'].upper()
     if(galaxy_input == 'ALL'):
@@ -643,6 +657,6 @@ if __name__ == "__main__":
             
 
     else :
-        fit_MCMC_galaxy(galaxy_input,method=method,function=args['function'],omega1=omega1)
+        fit_MCMC_galaxy(galaxy_input,method=method,function=args['function'],omega1=args['omega1'])
 
 

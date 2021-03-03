@@ -158,7 +158,7 @@ def lnlike_piecewisetruncation(params,bins,data,data_error):
 ################################################################################################
 #Fitting routines
 
-def fit_MCMC_galaxy(galaxy_name,method='masked_radial',function='piecewise',omega1=False):
+def fit_MCMC_galaxy(galaxy_name,method='masked_radial',function='piecewise',omega1=False,age=None):
     """
     Fit an MCMC to a galaxy with given name. 
     Parameters: 
@@ -187,21 +187,63 @@ def fit_MCMC_galaxy(galaxy_name,method='masked_radial',function='piecewise',omeg
 
     galaxy_class = loadObj(galaxy_class.outdir+
             '{}_summary'.format(galaxy_class.name))
+
+    if(age is not None):
+        if(age == 'young'):
+            ages = galaxy_class.get_cluster_ages()
+            galaxy_class.get_ra_dec()
+            #Clusters < 10Myr
+            galaxy_class.ra = galaxy_class.ra[np.where(ages <= 1.e7)]
+            galaxy_class.dec = galaxy_class.dec[np.where(ages <= 1.e7)]
+            if(os.path.isfile(galaxy_class.outdir+'young_corr.pkl')):
+                corr = loadObj(galaxy_class.outdir+'young_corr')
+                dcorr = loadObj(galaxy_class.outdir+'young_dcorr')
+            else:
+                print("Copmuting Young clusters TPCF")
+                corr,dcorr,bootstraps = bootstrap_two_point_angular(galaxy_class,
+                            method='landy-szalay',Nbootstraps=100,
+                            random_method=method)
+                saveObj(corr,galaxy_class.outdir+'young_corr')
+                saveObj(dcorr,galaxy_class.outdir+'young_dcorr')
+            galaxy_class.corr = corr 
+            galaxy_class.dcorr = dcorr
+
+        elif(age == 'old'):
+            ages = galaxy_class.get_cluster_ages()
+            galaxy_class.get_ra_dec()
+            #Clusters < 10Myr
+            galaxy_class.ra = galaxy_class.ra[np.where(ages > 1.e7)]
+            galaxy_class.dec = galaxy_class.dec[np.where(ages > 1.e7)]
+            if(os.path.isfile(galaxy_class.outdir+'old_corr.pkl')):
+                corr = loadObj(galaxy_class.outdir+'old_corr')
+                dcorr = loadObj(galaxy_class.outdir+'old_dcorr')
+            else:
+                print("Copmuting Young clusters TPCF")
+                corr,dcorr,bootstraps = bootstrap_two_point_angular(galaxy_class,
+                            method='landy-szalay',Nbootstraps=100,
+                            random_method=method)
+                saveObj(corr,galaxy_class.outdir+'old_corr')
+                saveObj(dcorr,galaxy_class.outdir+'old_dcorr')
+            galaxy_class.corr = corr 
+            galaxy_class.dcorr = dcorr
+        else:
+            raise ValueError("Age bracket if provided should be old or young")
+
     if(function == 'piecewise'):
         print("Fitting Piecewise PL with MCMC.")
-        fit_MCMC(galaxy_class,save=True,function='piecewise',omega1=omega1)
+        fit_MCMC(galaxy_class,save=True,function='piecewise',omega1=omega1,age=age)
     elif(function == 'singlepl') :
         print("Fitting Single PL fit in MCMC.")
-        fit_MCMC(galaxy_class,save=True,function='singlepl',omega1=omega1)
+        fit_MCMC(galaxy_class,save=True,function='singlepl',omega1=omega1,age=age)
     elif(function == 'singletrunc'):
         print("Fitting Single PL with exponential truncation fit in MCMC.")
-        fit_MCMC(galaxy_class,save=True,function='singletrunc',omega1=omega1)
+        fit_MCMC(galaxy_class,save=True,function='singletrunc',omega1=omega1,age=age)
     elif(function == 'doubletrunc'):
         print("Fitting Piecewise PL with exponential truncation fit in MCMC.")
-        fit_MCMC(galaxy_class,save=True,function='doubletrunc',omega1=omega1)
+        fit_MCMC(galaxy_class,save=True,function='doubletrunc',omega1=omega1,age=age)
     
 
-def fit_MCMC(galaxy_class,save=False,function='piecewise',omega1=False):
+def fit_MCMC(galaxy_class,save=False,function='piecewise',omega1=False,age=None):
     """
     Fit an MCMC to the TPCF of a galaxy and create diagnostic plots after. 
 
@@ -223,23 +265,44 @@ def fit_MCMC(galaxy_class,save=False,function='piecewise',omega1=False):
     
     if(function == 'piecewise'):
         if(omega1 is True):
-            MCMC_directory += '/Omega1/PiecePL_MCMC'
+            if(age == None):
+                MCMC_directory += '/Omega1/PiecePL_MCMC'
+            elif(age == 'young'):
+                MCMC_directory += '/Young/PiecePL_MCMC'
+            elif(age == 'old'):
+                MCMC_directory += '/Old/PiecePL_MCMC'
+
         else:
             MCMC_directory += '/PiecePL_MCMC'
     elif(function == 'singlepl'):
         if(omega1 is True):
-            MCMC_directory += '/Omega1/SinglePL_MCMC'
+            if(age == None):
+                MCMC_directory += '/Omega1/SinglePL_MCMC'
+            elif(age == 'young'):
+                MCMC_directory += '/Young/SinglePL_MCMC'
+            elif(age == 'old'):
+                MCMC_directory += '/Old/SinglePL_MCMC'
         else:
             MCMC_directory += '/SinglePL_MCMC'
         
     elif(function == 'singletrunc'):
         if(omega1 is True):
-            MCMC_directory += '/Omega1/SingleTrunc_MCMC'
+            if(age == None):
+                MCMC_directory += '/Omega1/SingleTrunc_MCMC'
+            elif(age == 'young'):
+                MCMC_directory += '/Young/SingleTrunc_MCMC'
+            elif(age == 'old'):
+                MCMC_directory += '/Old/SingleTrunc_MCMC'
         else:
             MCMC_directory += '/SingleTrunc_MCMC'
     elif(function == 'doubletrunc'):
         if(omega1 is True):
-            MCMC_directory += '/Omega1/PiecewiseTrunc_MCMC'
+            if(age == None):
+                MCMC_directory += '/Omega1/PiecewiseTrunc_MCMC'
+            elif(age == 'young'):
+                MCMC_directory += '/Young/PiecewiseTrunc_MCMC'
+            elif(age == 'old'):
+                MCMC_directory += '/Old/PiecewiseTrunc_MCMC'
         else:
             MCMC_directory += '/PiecewiseTrunc_MCMC'
 
@@ -251,22 +314,25 @@ def fit_MCMC(galaxy_class,save=False,function='piecewise',omega1=False):
     if(function == 'piecewise'):
         bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
         beta_limits = [np.min(bins),np.max(bins)]
+        galaxy_class.fit_power_law(method='single',omega1=omega1)
         initial_guess = galaxy_class.fit_values
         
         #Modify initial guess to be in b/w 50 & 300 pc
         distance = galaxy_class.distance*const.Parsec*1.e6
-        # beta_limits[0]= beta_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
-        # beta_limits[1] = beta_limits[1]*const.Parsec/distance*u.radian.to(u.arcsec)
-        initial_guess[3] = np.log((beta_limits[0]+beta_limits[1])/2.)
+        # # beta_limits[0]= beta_limits[0]*const.Parsec/distance*u.radian.to(u.arcsec)
+        # # beta_limits[1] = beta_limits[1]*const.Parsec/distance*u.radian.to(u.arcsec)
+        # initial_guess[3] = np.log((beta_limits[0]+beta_limits[1])/2.)
 
     elif(function == 'singlepl'):
         initial_guess = 5.0,-1.0
     elif(function == 'singletrunc'):
+        galaxy_class.fit_power_law(method='singletrunc',omega1=omega1)
         initial_guess = galaxy_class.fit_values[0],galaxy_class.fit_values[1],\
 np.exp(galaxy_class.fit_values[3])
 
     elif(function == 'doubletrunc'):
         distance = galaxy_class.distance*const.Parsec*1.e6
+        galaxy_class.fit_power_law(method='singletrunc',omega1=omega1)
         initial_guess = galaxy_class.fit_values[0],galaxy_class.fit_values[1],\
 galaxy_class.fit_values[2],np.exp(galaxy_class.fit_values[3]),np.exp(galaxy_class.fit_values[3])*2.0
 
@@ -280,9 +346,11 @@ galaxy_class.fit_values[2],np.exp(galaxy_class.fit_values[3]),np.exp(galaxy_clas
     #Set bins/x-data: i.e. the independent variable to fit with
     separation_bins = (galaxy_class.bins[1:]+galaxy_class.bins[:-1])/2
     separation_bins*=(1./arcsec_to_degree)
-    corr_fit = galaxy_class.corr[np.where(galaxy_class.corr>0.0)].astype(np.float)
-    dcorr_fit = galaxy_class.dcorr[np.where(galaxy_class.corr>0.0)].astype(np.float)
-    separation_bins = separation_bins[np.where(galaxy_class.corr>0.0)].astype(np.float)
+    indices = np.where(np.logical_and(galaxy_class.corr>0.0,
+            galaxy_class.corr>galaxy_class.dcorr))
+    corr_fit = galaxy_class.corr[indices].astype(np.float)
+    dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+    separation_bins = separation_bins[indices].astype(np.float)
 
     #Define MCMC samplers
 
