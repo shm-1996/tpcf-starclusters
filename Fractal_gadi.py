@@ -704,9 +704,10 @@ def bootstrap_two_point(data, bins, Nbootstrap=10,
     results = Parallel(n_jobs=-1,prefer='processes',verbose=0)(map(delayed(two_point),
         data_boot,repeat(bins),repeat(method),data_R,repeat(rng)))
     bootstraps = results
+    bootstraps = np.asarray(bootstraps)
+    corr = np.mean(bootstraps, 0)
+    corr_err = np.std(bootstraps, 0, ddof=1)
     
-    # use masked std dev in case of NaNs
-    corr_err = np.asarray(np.ma.masked_invalid(bootstraps).std(0, ddof=1))
 
     if return_bootstraps:
         return corr, corr_err, bootstraps
@@ -717,7 +718,7 @@ def plot_omega1(bins,corr,dcorr,fit='linear'):
     plt.clf()
     fig,axs = plt.subplots(ncols=1)
     separation_bins = (bins[1:]+bins[:-1])/2.
-    indices = np.where(corr>0.0)
+    indices = np.where(np.logical_and(corr>0.0,corr>dcorr))
     dcorr_lz = dcorr[indices]
     separation_bins = separation_bins[indices]
     corr_lz = corr[indices]
@@ -785,6 +786,14 @@ def plot_omega(bins,corr,dcorr,size=None):
 
     axs.legend()
     return fig
+
+def filter_stuff(bins,corr,dcorr):
+    separation_bins = (bins[1:]+bins[:-1])/2.
+    indices = np.where(corr>0.0)
+    dcorr_lz = dcorr[indices]
+    separation_bins = separation_bins[indices]
+    corr_lz = corr[indices]
+    return separation_bins,corr_lz,dcorr_lz
 
 
 
