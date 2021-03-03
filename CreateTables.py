@@ -114,7 +114,7 @@ def GalaxyInfo_Table():
     return
 
 
-def AIC_Table():
+def AIC_Table(omega1=False):
     print("Making AIC summary table.")
     print("####################################")
     results_directory = '../Results/'
@@ -186,7 +186,7 @@ def AIC_Table():
             # ST_error_high = ST_error_high - ST_median_fit
             
             #Get AIC values and find best model
-            AIC_S, AIC_PW, AIC_ST, AIC_PWT = compare_AIC(galaxy_name)
+            AIC_S, AIC_PW, AIC_ST, AIC_PWT = compare_AIC(galaxy_name,omega1=omega1)
             AIC_Values = [AIC_PW, AIC_S, AIC_ST,AIC_PWT]
             Model = ['PW', 'S', 'ST','PWT']
             best_index = np.argmin(AIC_Values)
@@ -235,7 +235,7 @@ def AIC_Table():
         subprocess.run(["rm","-rf","{}log/".format(results_directory)], stdout=subprocess.DEVNULL)
         return
 
-def BIC_Table():
+def BIC_Table(omega1=False):
     print("Making BIC summary table.")
     print("####################################")
     results_directory = '../Results/'
@@ -289,7 +289,7 @@ def BIC_Table():
             samples = sampler.flatchain
 
             #Get BIC values and find best model
-            BIC_S, BIC_PW, BIC_ST, BIC_PWT = compare_BIC(galaxy_name,nsamples)
+            BIC_S, BIC_PW, BIC_ST, BIC_PWT = compare_BIC(galaxy_name,nsamples,omega1=omega1)
             BIC_Values = [BIC_PW, BIC_S, BIC_ST,BIC_PWT]
             Model = ['PW', 'S', 'ST','PWT']
             best_index = np.argmin(BIC_Values)
@@ -338,7 +338,7 @@ def BIC_Table():
         subprocess.run(["rm","-rf","{}log/".format(results_directory)], stdout=subprocess.DEVNULL)
         return
 
-def AICc_Table():
+def AICc_Table(omega1=False):
     print("Making AICc summary table.")
     print("####################################")
     results_directory = '../Results/'
@@ -379,20 +379,30 @@ def AICc_Table():
             nsamples = np.size(corr_fit)
 
             #Read in PW fits
-            sampler = loadObj(galaxy_dir+'/PiecePL_MCMC/'+'MCMC_sampler')
+            if(omega1):
+                sampler = loadObj(galaxy_dir+'/PiecePL_MCMC/'+'MCMC_sampler')
+            else:
+                sampler = loadObj(galaxy_dir+'/Omega1/PiecePL_MCMC/'+'MCMC_sampler')
             samples = sampler.flatchain
 
             #Read in Single PL fit
-            sampler = loadObj(galaxy_dir+'/SinglePL_MCMC/'+'MCMC_sampler')
+            if(omega1):
+                sampler = loadObj(galaxy_dir+'/SinglePL_MCMC/'+'MCMC_sampler')
+            else:
+                sampler = loadObj(galaxy_dir+'/Omega1/SinglePL_MCMC/'+'MCMC_sampler')
             samples = sampler.flatchain
 
             
             #Read in SinglePL + Truncation fit
-            sampler = loadObj(galaxy_dir+'/SingleTrunc_MCMC/'+'MCMC_sampler')
+            if(omega1):
+                sampler = loadObj(galaxy_dir+'/Omega1/SingleTrunc_MCMC/'+'MCMC_sampler')
+            else:
+                sampler = loadObj(galaxy_dir+'/SingleTrunc_MCMC/'+'MCMC_sampler')
             samples = sampler.flatchain
 
             #Get AICc values and find best model
-            AICc_S, AICc_PW, AICc_ST, AICc_PWT = compare_AICc(galaxy_name,nsamples)
+            AICc_S, AICc_PW, AICc_ST, AICc_PWT = compare_AICc(galaxy_name,nsamples,
+                omega1=omega1)
             AICc_Values = [AICc_PW, AICc_S, AICc_ST,AICc_PWT]
             Model = ['PW', 'S', 'ST','PWT']
             best_index = np.argmin(AICc_Values)
@@ -554,7 +564,7 @@ def Prob_AIC(AIC_model,AIC_min):
     P = np.exp((AIC_min - AIC_model)/2.)
     return P
 
-def Get_Cutoff_Scale(galaxy_class,function='best'):
+def Get_Cutoff_Scale(galaxy_class,function='best',omega1=False):
     """
     Returns cutoff scale for a fitted function for a galaxy in arcsec. 
     
@@ -577,7 +587,7 @@ def Get_Cutoff_Scale(galaxy_class,function='best'):
     galaxy_name = galaxy_class.name
     
     if(function == 'best'):
-        AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples)
+        AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples,omega1=omega1)
         galaxy_functions = ['singlepl','piecewise','singletrunc','doubletrunc']
         galaxy_AIC = [AIC_single,AIC_piecewise,AIC_single_trunc,AIC_double_trunc] 
         galaxy_function = galaxy_functions[np.argmin(galaxy_AIC)]
@@ -585,17 +595,32 @@ def Get_Cutoff_Scale(galaxy_class,function='best'):
         galaxy_function = function
 
     #Read in best fit depending on best fit
-    if(galaxy_function == 'piecewise'):            
-        sampler = loadObj('../Results/Galaxies/{}/Masked/\
+    if(omega1):
+        if(galaxy_function == 'piecewise'):            
+            sampler = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
 PiecePL_MCMC/MCMC_sampler'.format(galaxy_name))
-    elif(galaxy_function == 'singlepl') :
-        sampler = loadObj('../Results/Galaxies/{}/Masked/\
+        elif(galaxy_function == 'singlepl') :
+            sampler = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
 SinglePL_MCMC/MCMC_sampler'.format(galaxy_name))
-    elif(galaxy_function == 'singletrunc') :
-        sampler = loadObj('../Results/Galaxies/{}/Masked/\
+        elif(galaxy_function == 'singletrunc') :
+            sampler = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
 SingleTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
-    elif(galaxy_function == 'doubletrunc') :
-        sampler = loadObj('../Results/Galaxies/{}/Masked/\
+        elif(galaxy_function == 'doubletrunc') :
+            sampler = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
+PiecewiseTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
+
+    else:
+        if(galaxy_function == 'piecewise'):            
+            sampler = loadObj('../Results/Galaxies/{}/Masked/\
+PiecePL_MCMC/MCMC_sampler'.format(galaxy_name))
+        elif(galaxy_function == 'singlepl') :
+            sampler = loadObj('../Results/Galaxies/{}/Masked/\
+SinglePL_MCMC/MCMC_sampler'.format(galaxy_name))
+        elif(galaxy_function == 'singletrunc') :
+            sampler = loadObj('../Results/Galaxies/{}/Masked/\
+SingleTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
+        elif(galaxy_function == 'doubletrunc') :
+            sampler = loadObj('../Results/Galaxies/{}/Masked/\
 PiecewiseTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
         
     samples = sampler.flatchain
