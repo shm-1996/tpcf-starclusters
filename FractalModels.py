@@ -3,6 +3,7 @@ from matplotlib.transforms import Bbox
 from ToyModels import *
 from joblib import Parallel, delayed
 from itertools import repeat
+import timeit
 
 #Some fixed parameters
 ############################################################################################
@@ -79,8 +80,14 @@ def Compute_TPCF_Fractal(xfractal,yfractal,no_bins=40,limits=0.0):
 def Analyse_Fractal(fractal_dim,limits=0.0,no_bins=40,max_level=10):
 
     #Generate Fractal 
+    start = time.time()
     xfractal,yfractal = Create_Fractal(fractal_dim,max_level=max_level)
+    end = time.time()
+    print("Fractal Created. Time taken: {} seconds".format(end-start))
+    start = time.time()
     bins,corr_lz,dcorr_lz = Compute_TPCF_Fractal(xfractal,yfractal,no_bins=no_bins)
+    end = time.time()
+    print("TPCF computed.Time taken: {} seconds".format(end-start))
     save_obj = [xfractal,yfractal,bins,corr_lz,dcorr_lz]
     saveObj(save_obj,'../Toy_Models/Fractals/D_{}'.format(int(fractal_dim*10)))
 
@@ -519,5 +526,13 @@ def Fractal_Table_Parallel(overwrite=False):
     results = Parallel(n_jobs=-1,prefer='processes',verbose=1)(map(delayed(Fractal_Table_OneD),
             fractal_dims,repeat(overwrite)))        
 if __name__ == "__main__":
-    Fractal_Table_OneD(1.5,overwrite=False)
+    #Fractal_Table_OneD(1.5,overwrite=False)
+    
+    # time the script
+    start_time = timeit.default_timer()
+    Analyse_Fractal(1.5,max_level=14)
+    # time the script
+    stop_time = timeit.default_timer()
+    total_time = stop_time - start_time
+    print("***************** time to finish = "+str(total_time)+"s *****************")
     print("Done")

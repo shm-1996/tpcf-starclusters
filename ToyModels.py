@@ -102,7 +102,7 @@ def Analyse_Spiral(thickness,Pitch=10,compute_TPCF=False,save=False):
                   label=r'$\theta_c = {:3.2f} \pm {:3.2f}$'.format(popt[2],perr[2]))
 
     axs[1].set_xlabel(r"$\Delta x \, (\mathrm{pixels})$")
-    axs[1].set_ylabel(r"$\omega_{\mathrm{LS}}\left(\theta \right)$")
+    axs[1].set_ylabel(r"$1+\omega_{\mathrm{LS}}\left(\theta \right)$")
     axs[1].legend(loc='best')
     axs[1].set_xscale('log')
     axs[1].set_yscale('log')
