@@ -233,7 +233,7 @@ def plot_MCMCfitsall(save=False,outdir='../Results/',indir=None,method='masked_r
     else :
         plt.show()
 
-def plot_omega1(save=False,outdir='../Results/',indir=None,method='masked',function='piecewise'):
+def plot_omega1(save=False,outdir='../Results/',indir=None,method='masked',function='piecewise',age=None):
     """
     Read MCMC samplers and plot the TPCF with best fit power law for all galaxies. 
 
@@ -292,6 +292,12 @@ def plot_omega1(save=False,outdir='../Results/',indir=None,method='masked',funct
             galaxy_dir = indir+galaxy_name+'/'+method_dir
 
         galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
+        if(age is not None):
+            corr = loadObj(galaxy_class.outdir+'{}_corr'.format(age))
+            dcorr = loadObj(galaxy_class.outdir+'{}_dcorr'.format(age))
+            galaxy_class.corr = corr
+            galaxy_class.dcorr = dcorr
+                
 
         #Find no of samples to which MCMC was fitted
         indices = np.where(galaxy_class.corr>0.0)
@@ -302,25 +308,45 @@ def plot_omega1(save=False,outdir='../Results/',indir=None,method='masked',funct
         if(function == 'best'):
             #Choose best function based on AIC value
             #AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples)
-            AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples,omega1=True)
+            AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples,
+                omega1=True,age=age)
             galaxy_functions = ['singlepl','piecewise','singletrunc','doubletrunc']
             galaxy_AIC = [AIC_single,AIC_piecewise,AIC_single_trunc,AIC_double_trunc] 
             galaxy_function = galaxy_functions[np.argmin(galaxy_AIC)] 
         else:
             galaxy_function = function
 
-
+        MCMC_directory = galaxy_class.outdir
         if(galaxy_function == 'piecewise'):
-            
-            sampler = loadObj(galaxy_dir+'/Omega1/PiecePL_MCMC/'+'MCMC_sampler')
+            if(age == None):
+                MCMC_directory += '/Omega1/PiecePL_MCMC'
+            elif(age == 'young'):
+                MCMC_directory += '/Young/PiecePL_MCMC'
+            elif(age == 'old'):
+                MCMC_directory += '/Old/PiecePL_MCMC'
         elif(galaxy_function == 'singlepl') :
-            sampler = loadObj(galaxy_dir+'/Omega1/SinglePL_MCMC/'+'MCMC_sampler')
+            if(age == None):
+                MCMC_directory += '/Omega1/SinglePL_MCMC'
+            elif(age == 'young'):
+                MCMC_directory += '/Young/SinglePL_MCMC'
+            elif(age == 'old'):
+                MCMC_directory += '/Old/SinglePL_MCMC'
         elif(galaxy_function == 'singletrunc') :
-            sampler = loadObj(galaxy_dir+'/Omega1/SingleTrunc_MCMC/'+'MCMC_sampler')
+            if(age == None):
+                MCMC_directory += '/Omega1/SingleTrunc_MCMC'
+            elif(age == 'young'):
+                MCMC_directory += '/Young/SingleTrunc_MCMC'
+            elif(age == 'old'):
+                MCMC_directory += '/Old/SingleTrunc_MCMC'
         elif(galaxy_function == 'doubletrunc') :
-            sampler = loadObj(galaxy_dir+'/Omega1/PiecewiseTrunc_MCMC/'+'MCMC_sampler')
+            if(age == None):
+                MCMC_directory += '/Omega1/PiecewiseTrunc_MCMC'
+            elif(age == 'young'):
+                MCMC_directory += '/Young/PiecewiseTrunc_MCMC'
+            elif(age == 'old'):
+                MCMC_directory += '/Old/PiecewiseTrunc_MCMC'
             
-        
+        sampler = loadObj(MCMC_directory+'/MCMC_sampler')
         samples = sampler.flatchain
         galaxy_class.fit_values = samples[np.argmax(sampler.flatlnprobability)]
         galaxy_class.fit_errors = samples.std(axis=0)
@@ -447,7 +473,12 @@ def plot_omega1(save=False,outdir='../Results/',indir=None,method='masked',funct
 
 
     if(save):
-        filename = outdir+'Combined_TPCF_Omega1.pdf'
+        if(age == None):
+            filename = outdir+'Combined_TPCF_Omega1.pdf'
+        if(age=='young'):
+            filename = outdir+'Young_TPCF_Omega1.pdf'
+        if(age=='old'):
+            filename = outdir+'Old_TPCF_Omega1.pdf'
         plt.savefig(filename,bbox_inches='tight')
         plt.close()
     else :
@@ -634,7 +665,7 @@ if __name__ == "__main__":
             "'Uniform', 'Masked', and 'Masked_Radial'.")
 
     if(args['age'] is not None):
-        if(args['omega1'] is False)
+        if(args['omega1'] is False):
             raise ValueError("Omega1 flag should be switched on if age cuts done.")
         else:
             if(args['age'].lower() == 'young'):
@@ -644,12 +675,14 @@ if __name__ == "__main__":
             else:
                 raise ValueError("Age flag should have value old or young. Please check.")
 
-
+    else:
+        age = None
     galaxy_input = args['galaxy'].upper()
     if(galaxy_input == 'ALL'):
         if(args['fit'] is True):
             for galaxy_name in list_of_galaxies:
-                fit_MCMC_galaxy(galaxy_name,method=method,function=args['function'],omega1=args['omega1'])
+                fit_MCMC_galaxy(galaxy_name,method=method,function=args['function'],omega1=args['omega1'],
+                    age=age)
         if(args['omega1'] is True):
             plot_omega1(save=True,method=method,function=args['function'])
         else:
@@ -657,6 +690,6 @@ if __name__ == "__main__":
             
 
     else :
-        fit_MCMC_galaxy(galaxy_input,method=method,function=args['function'],omega1=args['omega1'])
+        fit_MCMC_galaxy(galaxy_input,method=method,function=args['function'],omega1=args['omega1'],age=age)
 
 

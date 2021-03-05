@@ -326,13 +326,13 @@ def fit_MCMC(galaxy_class,save=False,function='piecewise',omega1=False,age=None)
     elif(function == 'singlepl'):
         initial_guess = 5.0,-1.0
     elif(function == 'singletrunc'):
-        galaxy_class.fit_power_law(method='singletrunc',omega1=omega1)
+        galaxy_class.fit_power_law(function='singletrunc',method='single',omega1=omega1)
         initial_guess = galaxy_class.fit_values[0],galaxy_class.fit_values[1],\
-np.exp(galaxy_class.fit_values[3])
+galaxy_class.fit_values[2]
 
     elif(function == 'doubletrunc'):
         distance = galaxy_class.distance*const.Parsec*1.e6
-        galaxy_class.fit_power_law(method='singletrunc',omega1=omega1)
+        galaxy_class.fit_power_law(function='piecewise',method='single',omega1=omega1)
         initial_guess = galaxy_class.fit_values[0],galaxy_class.fit_values[1],\
 galaxy_class.fit_values[2],np.exp(galaxy_class.fit_values[3]),np.exp(galaxy_class.fit_values[3])*2.0
 
@@ -341,6 +341,7 @@ galaxy_class.fit_values[2],np.exp(galaxy_class.fit_values[3]),np.exp(galaxy_clas
     nwalkers = 500
     ndim = len(initial_guess)
     step = 1.e-7
+
     p0 = [np.array(initial_guess) + step * np.random.randn(ndim) for i in range(nwalkers)]
 
     #Set bins/x-data: i.e. the independent variable to fit with
@@ -351,7 +352,6 @@ galaxy_class.fit_values[2],np.exp(galaxy_class.fit_values[3]),np.exp(galaxy_clas
     corr_fit = galaxy_class.corr[indices].astype(np.float)
     dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
     separation_bins = separation_bins[indices].astype(np.float)
-
     #Define MCMC samplers
 
     #Include distance in argument for piecewise model sampler
