@@ -220,9 +220,16 @@ def Combined_TPCF_CompareAges(save=False,outdir='../Results/',indir=None,method=
         
 
         #Young Clusters TPCF            
-        corr,dcorr,bootstraps = bootstrap_two_point_angular(galaxy_class,
+        if(os.path.isfile(galaxy_class.outdir+'young_corr.pkl')):
+            corr = loadObj(galaxy_class.outdir+'young_corr')
+            dcorr = loadObj(galaxy_class.outdir+'young_dcorr')
+        else:
+            print("Copmuting Young clusters TPCF")
+            corr,dcorr,bootstraps = bootstrap_two_point_angular(galaxy_class,
                         method='landy-szalay',Nbootstraps=100,
                         random_method=method)
+            saveObj(corr,galaxy_class.outdir+'young_corr')
+            saveObj(dcorr,galaxy_class.outdir+'young_dcorr')
         galaxy_class.corr = corr 
         galaxy_class.dcorr = dcorr
 
@@ -245,9 +252,16 @@ def Combined_TPCF_CompareAges(save=False,outdir='../Results/',indir=None,method=
         galaxy_class.dec = galaxy_class.dec[np.where(ages > 1.e7)]
 
         #Compute TPCF
-        corr,dcorr,bootstraps = bootstrap_two_point_angular(galaxy_class,
+        if(os.path.isfile(galaxy_class.outdir+'old_corr.pkl')):
+            corr = loadObj(galaxy_class.outdir+'old_corr')
+            dcorr = loadObj(galaxy_class.outdir+'old_dcorr')
+        else:
+            print("Copmuting Young clusters TPCF")
+            corr,dcorr,bootstraps = bootstrap_two_point_angular(galaxy_class,
                         method='landy-szalay',Nbootstraps=100,
                         random_method=method)
+            saveObj(corr,galaxy_class.outdir+'old_corr')
+            saveObj(dcorr,galaxy_class.outdir+'old_dcorr')
         galaxy_class.corr = corr 
         galaxy_class.dcorr = dcorr
 
@@ -291,6 +305,181 @@ def Combined_TPCF_CompareAges(save=False,outdir='../Results/',indir=None,method=
 
     if(save):
         filename = outdir+'Combined_TPCF_AgeCompare.pdf'    
+        plt.savefig(filename,bbox_inches='tight')
+        plt.close()
+    else :
+        plt.show()        
+
+def Combined_TPCF_AgeProgression(save=False,outdir='../Results/',indir=None,method='masked'):
+    """
+    Plot the TPCF of clusters based on age cuts.
+
+    Parameters:
+        save: 
+            Flag to save the plot
+        outdir: 
+            Output directory in which to store plot. Default is results directory.
+        indir :
+            Input directory from which to read the results. Default is results directory.
+        method : 
+            Method for which TPCF's have been computed.   
+    Returns:
+        None
+
+
+    """
+    print("Plotting TPCFs with age progression.")
+
+    #Create figure and axs instance
+    fig,axs = plt.subplots(nrows=3,ncols=4,figsize=(16,12))
+
+    if(indir == None):
+        indir = os.path.abspath('../Results/Galaxies/')+'/'
+        method_dir = ''
+    else :
+        method_dir = None
+
+    #Directories
+    indir = os.path.abspath(indir)+'/'
+    outir = os.path.abspath(outdir)+'/'
+
+    if(method_dir is not None):
+        if(method.upper() == 'MASKED'):
+            method_dir = 'Masked/'
+        elif(method.upper() == 'UNIFORM'):
+            method_dir = 'Uniform/'
+        elif(method.upper() == 'MASKED_RADIAL'):
+            method_dir = 'Masked_Radial/'
+        else:
+            raise myError("Method not recognised.")
+
+
+    i,j = 0,0            
+    #Loop through the galaxies
+    for galaxy_name in list_of_galaxies:
+        if(method_dir == None):
+            galaxy_dir = indir+galaxy_name+'/'            
+        else :
+            galaxy_dir = indir+galaxy_name+'/'+method_dir
+
+        galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
+        plot_class = myPlot(galaxy_class)
+
+        separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+        separation_bins = separation_bins.astype(np.float)
+        plot_points = np.linspace(np.min(separation_bins),np.max(separation_bins),1000)
+
+        #Set axes
+        axs[i,j].set_yscale('log')            
+        ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
+        
+        ########################################
+        ages = galaxy_class.get_cluster_ages()
+        galaxy_class.get_ra_dec()
+        
+        #Clusters < 10Myr
+        galaxy_class.ra = galaxy_class.ra[np.where(ages > 1.e7)]
+        galaxy_class.dec = galaxy_class.dec[np.where(ages > 1.e7)] 
+        
+
+        #Young Clusters TPCF            
+        corr,dcorr,bootstraps = bootstrap_two_point_angular(galaxy_class,
+                        method='landy-szalay',Nbootstraps=100,
+                        random_method=method)
+        galaxy_class.corr = corr 
+        galaxy_class.dcorr = dcorr
+
+        #Isolate non-zero correlation points
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+        separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+        separation_bins = separation_bins.astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
+        separation_bins = separation_bins.astype(np.float)
+        
+        
+        axs[i,j].errorbar(separation_bins,1+corr_fit,yerr=dcorr_fit,
+            fmt='.-',lw=0.2,color='#F56B5C90',label=r'$T > 10 \, \mathrm{Myr}$')
+        ########################################
+        galaxy_class.get_ra_dec()
+        #Old Clusters: T> 10 Myr
+        galaxy_class.ra = galaxy_class.ra[np.where(ages > 3.e7)]
+        galaxy_class.dec = galaxy_class.dec[np.where(ages > 3.e7)]
+
+        #Compute TPCF
+        corr,dcorr,bootstraps = bootstrap_two_point_angular(galaxy_class,
+                        method='landy-szalay',Nbootstraps=100,
+                        random_method=method)
+        galaxy_class.corr = corr 
+        galaxy_class.dcorr = dcorr
+
+        #Isolate non-zero correlation points
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+        separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+        separation_bins = separation_bins.astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
+        separation_bins = separation_bins.astype(np.float)
+
+        axs[i,j].errorbar(separation_bins,1+corr_fit,yerr=dcorr_fit,
+            fmt='.-',lw=0.2,color='#4591F590',label=r'$T > 30 \, \mathrm{Myr}$')
+
+        ############################################
+        galaxy_class.get_ra_dec()
+        #Old Clusters: T> 10 Myr
+        galaxy_class.ra = galaxy_class.ra[np.where(ages > 7.e7)]
+        galaxy_class.dec = galaxy_class.dec[np.where(ages > 7.e7)]
+
+        #Compute TPCF
+        corr,dcorr,bootstraps = bootstrap_two_point_angular(galaxy_class,
+                        method='landy-szalay',Nbootstraps=100,
+                        random_method=method)
+        galaxy_class.corr = corr 
+        galaxy_class.dcorr = dcorr
+
+        #Isolate non-zero correlation points
+        indices = np.where(galaxy_class.corr>0.0)
+        corr_fit = galaxy_class.corr[indices].astype(np.float)
+        dcorr_fit = galaxy_class.dcorr[indices].astype(np.float)
+        separation_bins = galaxy_class.bin_centres*(1./arcsec_to_degree)
+        separation_bins = separation_bins.astype(np.float)
+        separation_bins = separation_bins[indices].astype(np.float)
+        separation_bins = separation_bins.astype(np.float)
+
+        axs[i,j].errorbar(separation_bins,1+corr_fit,yerr=dcorr_fit,
+            fmt='.-',lw=0.2,color='#4591F590',label=r'$T > 70 \, \mathrm{Myr}$')
+        ###############################################################
+
+        # General Plot stuff
+        #X-labels only on bottom row
+        if(i==2):
+            axs[i,j].set_xlabel(r"$\theta \, \left(\mathrm{arcsec} \right)$")
+        #Y-labels only on left column
+        if(j == 0):
+            axs[i,j].set_ylabel(r"$1+\omega_{\mathrm{LS}}\left(\theta \right)$")
+        axs[i,j].set_xscale('log')
+        axs[i,j].callbacks.connect("xlim_changed", plot_class.axs_to_parsec)
+        axs[i,j].legend()
+
+        #Secondary axis label only for top row
+        if(i==0):
+            ax2.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
+
+        
+        axs[i,j].text(0.1,0.1,r'$\mathrm{NGC}$'+' '+r'${}$'.format(galaxy_name.split('_')[1]),
+            transform=axs[i,j].transAxes)
+
+        #Get position of subplot
+        j +=1
+        if(j==4):
+            j = 0
+            i +=1
+
+
+    if(save):
+        filename = outdir+'Combined_TPCF_AgeProgression.pdf'    
         plt.savefig(filename,bbox_inches='tight')
         plt.close()
     else :
@@ -801,7 +990,8 @@ def Combined_Clusters_FOV(save=False,outdir='../Results/',indir=None,method='mas
 
 
         #Get galaxy centre pixel coordinates
-        ra_dec = SkyCoord.from_name(galaxy_class.name)
+        name = galaxy_class.name.split('_')[0] + ' ' + galaxy_class.name.split('_')[1]
+        ra_dec = SkyCoord.from_name(name)
         xpix_c,ypix_c = wcs.all_world2pix(ra_dec.ra.value,ra_dec.dec.value,0)
         
         #Loop over FOV regions to get min/max values after deprojecting
@@ -1309,7 +1499,8 @@ def Plot_CombinedTPCF(save=False,outdir='../Results/',indir=None,method='masked'
         region = read_ds9(galaxy_class.region_file)
         hdu = fits.open(galaxy_class.fits_file)[0]
         wcs = WCS(hdu.header)
-        ra_dec = SkyCoord.from_name(galaxy_class.name)
+        name = galaxy_class.name.split('_')[0] + ' ' + galaxy_class.name.split('_')[1]
+        ra_dec = SkyCoord.from_name(name)
         xpix_c,ypix_c = wcs.all_world2pix(ra_dec.ra.value,ra_dec.dec.value,0)
 
         for k in range(0,np.size(region)):
@@ -1377,7 +1568,7 @@ def Plot_CombinedTPCF(save=False,outdir='../Results/',indir=None,method='masked'
         plt.show()
 
 
-def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='masked',function='best'):
+def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='masked',function='best',age=None):
     """
     Read MCMC samplers and plot the TPCF with best fit power law for all galaxies. 
 
@@ -1436,6 +1627,11 @@ def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='maske
             galaxy_dir = indir+galaxy_name+'/'+method_dir
 
         galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
+        if(age is not None):
+            corr = loadObj(galaxy_class.outdir+'{}_corr'.format(age))
+            dcorr = loadObj(galaxy_class.outdir+'{}_dcorr'.format(age))
+            galaxy_class.corr = corr
+            galaxy_class.dcorr = dcorr
 
         #Find no of samples to which MCMC was fitted
         indices = np.where(galaxy_class.corr>0.0)
@@ -1443,10 +1639,12 @@ def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='maske
         nsamples = np.size(corr_fit)
 
 
+
         if(function == 'best'):
             #Choose best function based on AIC value
             #AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples)
-            AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples,omega1=True)
+            AIC_single,AIC_piecewise, AIC_single_trunc, AIC_double_trunc = compare_AICc(galaxy_name,nsamples,
+                omega1=True,age=age)
             #galaxy_functions = ['singlepl','piecewise','singletrunc','doubletrunc']
             galaxy_functions = ['singlepl','piecewise','singletrunc']
             #galaxy_AIC = [AIC_single,AIC_piecewise,AIC_single_trunc,AIC_double_trunc] 
@@ -1457,16 +1655,37 @@ def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='maske
             galaxy_function = function
 
 
+        MCMC_directory = galaxy_class.outdir
         if(galaxy_function == 'piecewise'):
-            
-            sampler = loadObj(galaxy_dir+'/Omega1/PiecePL_MCMC/'+'MCMC_sampler')
+            if(age == None):
+                MCMC_directory += '/Omega1/PiecePL_MCMC'
+            elif(age == 'young'):
+                MCMC_directory += '/Young/PiecePL_MCMC'
+            elif(age == 'old'):
+                MCMC_directory += '/Old/PiecePL_MCMC'
         elif(galaxy_function == 'singlepl') :
-            sampler = loadObj(galaxy_dir+'/Omega1/SinglePL_MCMC/'+'MCMC_sampler')
+            if(age == None):
+                MCMC_directory += '/Omega1/SinglePL_MCMC'
+            elif(age == 'young'):
+                MCMC_directory += '/Young/SinglePL_MCMC'
+            elif(age == 'old'):
+                MCMC_directory += '/Old/SinglePL_MCMC'
         elif(galaxy_function == 'singletrunc') :
-            sampler = loadObj(galaxy_dir+'/Omega1/SingleTrunc_MCMC/'+'MCMC_sampler')
+            if(age == None):
+                MCMC_directory += '/Omega1/SingleTrunc_MCMC'
+            elif(age == 'young'):
+                MCMC_directory += '/Young/SingleTrunc_MCMC'
+            elif(age == 'old'):
+                MCMC_directory += '/Old/SingleTrunc_MCMC'
         elif(galaxy_function == 'doubletrunc') :
-            sampler = loadObj(galaxy_dir+'/Omega1/PiecewiseTrunc_MCMC/'+'MCMC_sampler')
+            if(age == None):
+                MCMC_directory += '/Omega1/PiecewiseTrunc_MCMC'
+            elif(age == 'young'):
+                MCMC_directory += '/Young/PiecewiseTrunc_MCMC'
+            elif(age == 'old'):
+                MCMC_directory += '/Old/PiecewiseTrunc_MCMC'
             
+        sampler = loadObj(MCMC_directory+'/MCMC_sampler')
         
         samples = sampler.flatchain
         galaxy_class.fit_values = samples[np.argmax(sampler.flatlnprobability)]
@@ -1563,7 +1782,8 @@ def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='maske
         region = read_ds9(galaxy_class.region_file)
         hdu = fits.open(galaxy_class.fits_file)[0]
         wcs = WCS(hdu.header)
-        ra_dec = SkyCoord.from_name(galaxy_class.name)
+        name = galaxy_class.name.split('_')[0] + ' ' + galaxy_class.name.split('_')[1]
+        ra_dec = SkyCoord.from_name(name)
         xpix_c,ypix_c = wcs.all_world2pix(ra_dec.ra.value,ra_dec.dec.value,0)
 
         for k in range(0,np.size(region)):
@@ -1616,6 +1836,12 @@ def Plot_Omega1Combined(save=False,outdir='../Results/',indir=None,method='maske
 
     if(save):
         filename = outdir+'Combined_TPCF_Omega1Final.pdf'
+        if(age == None):
+            filename = outdir+'Combined_TPCF_Omega1Final.pdf'
+        if(age=='young'):
+            filename = outdir+'Young_TPCF_Omega1Final.pdf'
+        if(age=='old'):
+            filename = outdir+'Old_TPCF_Omega1Final.pdf'
         plt.savefig(filename,bbox_inches='tight')
         plt.close()
     else :
@@ -1674,7 +1900,8 @@ def Combined_Clusters_AllScales(save=False,outdir='../Results/',indir=None,metho
 
 
         #Get galaxy centre pixel coordinates
-        ra_dec = SkyCoord.from_name(galaxy_class.name)
+        name = galaxy_class.name.split('_')[0] + ' ' + galaxy_class.name.split('_')[1]
+        ra_dec = SkyCoord.from_name(name)
         xpix_c,ypix_c = wcs.all_world2pix(ra_dec.ra.value,ra_dec.dec.value,0)
         
         # #Loop over FOV regions to get min/max values after deprojecting
@@ -1800,7 +2027,7 @@ def Combined_Clusters_AllScales(save=False,outdir='../Results/',indir=None,metho
     else :
         plt.show()
 
-def Gaussian_KDE_Clusters(save=False,outdir='../Results/',indir=None,method='masked',log=False):
+def Gaussian_KDE_Clusters(save=False,outdir='../Results/',indir=None,method='masked',log=False,age=None):
 
     import scipy.stats as st
     from matplotlib import ticker, cm
@@ -1845,6 +2072,17 @@ def Gaussian_KDE_Clusters(save=False,outdir='../Results/',indir=None,method='mas
 
         x = galaxy_class.ra*3600.0
         y = galaxy_class.dec*3600.0
+        ages = galaxy_class.get_cluster_ages()
+
+        if(age is not None):
+            if(age == 'young'):
+                x = galaxy_class.ra[np.where(ages <= 1.e7)]*3600.
+                y = galaxy_class.dec[np.where(ages <= 1.e7)]*3600.
+            elif(age == 'old'):
+                x = galaxy_class.ra[np.where(ages > 5.e7)]*3600.
+                y = galaxy_class.dec[np.where(ages > 5.e7)]*3600.
+            else:
+                raise ValueError("age should be either young or old.")
 
 
         xmin, xmax = np.min(x),np.max(x)
@@ -1860,6 +2098,12 @@ def Gaussian_KDE_Clusters(save=False,outdir='../Results/',indir=None,method='mas
         y = y-ycen
         xmin, xmax = np.min(x)-offset_x,np.max(x)+offset_x
         ymin, ymax = np.min(y)-offset_y,np.max(y)+offset_y
+
+        #Get center of galaxy in the image
+        name = galaxy_class.name.split('_')[0] + ' ' + galaxy_class.name.split('_')[1]
+        ra_dec = SkyCoord.from_name(name)
+        ra_centre,dec_centre = ra_dec.ra.value*3600.,ra_dec.dec.value*3600.
+        xc_gal,yc_gal = ra_centre - xcen, dec_centre - ycen
 
         #Estimate Gaussian Kernel
         xx, yy = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
@@ -1904,6 +2148,9 @@ def Gaussian_KDE_Clusters(save=False,outdir='../Results/',indir=None,method='mas
             xycoords='axes fraction',
                             fontsize=12)
 
+        #Show centre
+        axs[i,j].scatter(xc_gal,yc_gal,color='#FF039F',marker='x',lw=2.0,s=32)
+
         if(i==3):
             axs[i,j].set_xlabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
 
@@ -1926,13 +2173,226 @@ def Gaussian_KDE_Clusters(save=False,outdir='../Results/',indir=None,method='mas
         if(log):
             filename = outdir+'Combined_Clusters_KDELog.pdf'
         else:
-            filename = outdir+'Combined_Clusters_KDE.pdf'
+            if(age == 'young'):
+                filename = outdir+'Young_Clusters_KDE.pdf'
+            elif(age == 'old'):
+                filename = outdir+'Old_Clusters_KDE.pdf'
+            else:
+                filename = outdir+'Combined_Clusters_KDE.pdf'
         plt.savefig(filename,bbox_inches='tight')
         plt.close()
     else :
         plt.show()
 
 
+
+def AgeSeparation_Relation(save=False,outdir='../Results/',indir=None,method='masked'):
+    print("Plotting Old/Young cluster numbers of all clusters as a function of separation.")
+
+    #Create figure and axs instance
+    fig,axs = plt.subplots(nrows=4,ncols=3,figsize=(12,16))
+
+    if(indir == None):
+        indir = os.path.abspath('../Results/Galaxies/')+'/'
+        method_dir = ''
+    else :
+        method_dir = None
+
+    #Directories
+    indir = os.path.abspath(indir)+'/'
+    outir = os.path.abspath(outdir)+'/'
+
+    if(method_dir is not None):
+        if(method.upper() == 'MASKED'):
+            method_dir = 'Masked/'
+        elif(method.upper() == 'UNIFORM'):
+            method_dir = 'Uniform/'
+        elif(method.upper() == 'MASKED_RADIAL'):
+            method_dir = 'Masked_Radial/'
+        else:
+            raise myError("Method not recognised.")
+
+
+    i,j = 0,0
+    #Loop through the galaxies
+    for galaxy_name in list_of_galaxies:
+        if(method_dir == None):
+            galaxy_dir = indir+galaxy_name+'/'            
+        else :
+            galaxy_dir = indir+galaxy_name+'/'+method_dir
+
+        galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
+        plot_class = myPlot(galaxy_class)
+
+        counts_DD = np.zeros((2,galaxy_class.no_bins))
+        bins_transform = angular_dist_to_euclidean_dist(galaxy_class.bins)
+        for k in range(2):
+            galaxy_class.get_ra_dec()
+            ages = galaxy_class.get_cluster_ages()
+            if(k == 0):
+                galaxy_class.ra = galaxy_class.ra[np.where(ages <= 1.e7)]
+                galaxy_class.dec = galaxy_class.dec[np.where(ages <= 1.e7)]
+            else:
+                galaxy_class.ra = galaxy_class.ra[np.where(ages > 1.e7)]
+                galaxy_class.dec = galaxy_class.dec[np.where(ages > 1.e7)]
+            
+            xyz_clusters = np.asarray(ra_dec_to_xyz(galaxy_class.ra, 
+                                            galaxy_class.dec), order='F').T
+            KDT_D = KDTree(xyz_clusters)
+            counts = KDT_D.two_point_correlation(xyz_clusters, bins_transform)
+            counts_DD[k] = np.diff(counts)
+        #Reset RA/DEC
+        galaxy_class.get_ra_dec(cluster_class=-1)
+
+        axs[i,j].bar(galaxy_class.bins_arcsec[:-1],counts_DD[0],
+            align='edge',width=np.diff(galaxy_class.bins_arcsec),
+            color='#4983FC',label=r'$T < 10\, \mathrm{Myr}$')
+        axs[i,j].bar(galaxy_class.bins_arcsec[:-1],counts_DD[1],
+                    align='edge',width=np.diff(galaxy_class.bins_arcsec),
+                    bottom=counts_DD[0],color='#F51557',label=r'$T>10\, \mathrm{Myr}$')
+
+        axs[i,j].set_xscale('log')
+        axs[i,j].set_yscale('log')
+        axs[i,j].legend(loc='upper left')
+        
+        axs[i,j].callbacks.connect("xlim_changed", plot_class.axs_to_parsec)
+        ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
+        ax2.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
+
+        
+
+        if(i==3):
+            axs[i,j].set_xlabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
+
+        if(j==0):
+            axs[i,j].set_ylabel(r'$\mathrm{N_{\mathrm{pairs}}}$',fontsize=16)
+        
+        axs[i,j].text(0.07,0.6,r'$\mathrm{NGC}$'+' '+r'${}$'.format(galaxy_name.split('_')[1]),
+            transform=axs[i,j].transAxes)
+
+        j +=1
+        if(j==3):
+            j = 0
+            i +=1
+
+    if(save):    
+        filename = outdir+'Clusters_AgeSeparation.pdf'
+        plt.savefig(filename,bbox_inches='tight')
+        plt.close()
+    else :
+        plt.show()
+
+def AgeFraction(save=False,outdir='../Results/',indir=None,method='masked'):
+    print("Plotting Old/Young cluster Fraction of all clusters as a function of separation.")
+
+    #Create figure and axs instance
+    fig,axs = plt.subplots(nrows=4,ncols=3,figsize=(12,16))
+
+    if(indir == None):
+        indir = os.path.abspath('../Results/Galaxies/')+'/'
+        method_dir = ''
+    else :
+        method_dir = None
+
+    #Directories
+    indir = os.path.abspath(indir)+'/'
+    outir = os.path.abspath(outdir)+'/'
+
+    if(method_dir is not None):
+        if(method.upper() == 'MASKED'):
+            method_dir = 'Masked/'
+        elif(method.upper() == 'UNIFORM'):
+            method_dir = 'Uniform/'
+        elif(method.upper() == 'MASKED_RADIAL'):
+            method_dir = 'Masked_Radial/'
+        else:
+            raise myError("Method not recognised.")
+
+
+    i,j = 0,0
+    #Loop through the galaxies
+    for galaxy_name in list_of_galaxies:
+        if(method_dir == None):
+            galaxy_dir = indir+galaxy_name+'/'            
+        else :
+            galaxy_dir = indir+galaxy_name+'/'+method_dir
+
+        galaxy_class = loadObj(galaxy_dir+galaxy_name+'_summary')
+        plot_class = myPlot(galaxy_class)
+
+        counts_DD = np.zeros((2,galaxy_class.no_bins))
+        bins_transform = angular_dist_to_euclidean_dist(galaxy_class.bins)
+        for k in range(2):
+            galaxy_class.get_ra_dec()
+            ages = galaxy_class.get_cluster_ages()
+            if(k == 0):
+                galaxy_class.ra = galaxy_class.ra[np.where(ages <= 1.e7)]
+                galaxy_class.dec = galaxy_class.dec[np.where(ages <= 1.e7)]
+            else:
+                galaxy_class.ra = galaxy_class.ra[np.where(ages > 1.e7)]
+                galaxy_class.dec = galaxy_class.dec[np.where(ages > 1.e7)]
+            
+            xyz_clusters = np.asarray(ra_dec_to_xyz(galaxy_class.ra, 
+                                            galaxy_class.dec), order='F').T
+            KDT_D = KDTree(xyz_clusters)
+            counts = KDT_D.two_point_correlation(xyz_clusters, bins_transform)
+            counts_DD[k] = np.diff(counts)
+        #Reset RA/DEC
+        galaxy_class.get_ra_dec(cluster_class=-1)
+
+        axs[i,j].bar(galaxy_class.bins_arcsec[:-1],counts_DD[0]/counts_DD[1],
+            align='edge',width=np.diff(galaxy_class.bins_arcsec),
+            color='#4983FC')
+        axs[i,j].set_xscale('log')
+        #axs[i,j].set_yscale('log')
+        
+        axs[i,j].callbacks.connect("xlim_changed", plot_class.axs_to_parsec)
+
+        ax2 = axs[i,j].secondary_xaxis("top",functions=(plot_class.sep_to_pc,plot_class.pc_to_sep))
+        if(i == 0):
+            ax2.set_xlabel(r'$\delta x \, \left( \mathrm{pc} \right) $')
+        ylim = axs[i,j].get_ylim()
+
+        axs[i,j].axhline(1.0,ls='--',lw=1.5,color='#F98000')
+
+        indices_young = np.where(counts_DD[0]/counts_DD[1]>1.0)
+        indices_old = np.where(counts_DD[0]/counts_DD[1]<=1.0)
+        bin_edge = galaxy_class.bins_arcsec[:-1]
+        if(np.size(indices_young)>0):
+            if(np.size(indices_old)>0):
+                young_max = bin_edge[np.min(indices_old)]
+            else:
+                young_max = galaxy_class.bins_arcsec[-1]
+            axs[i,j].axvspan(bin_edge[np.min(indices_young)],young_max,
+                alpha=0.3,color='#4983FC',label='Young Dominated')
+        if(np.size(indices_old)>0):
+            axs[i,j].axvspan(bin_edge[np.min(indices_old)],galaxy_class.bins_arcsec[-1],
+                alpha=0.3,color='#F51557',label='Old Dominated')
+
+        if(i+j==0):
+            axs[i,j].legend(loc='right')
+        
+
+        if(i==3):
+            axs[i,j].set_xlabel(r'$\mathrm{separation} \, (\mathrm{arcsec})$',fontsize=16)
+
+        if(j==0):
+            axs[i,j].set_ylabel(r'$\mathrm{f_{\mathrm{pairs}}}$',fontsize=16)
+        
+        axs[i,j].text(0.6,0.9,r'$\mathrm{NGC}$'+' '+r'${}$'.format(galaxy_name.split('_')[1]),
+            transform=axs[i,j].transAxes)
+
+        j +=1
+        if(j==3):
+            j = 0
+            i +=1
+
+    if(save):    
+        filename = outdir+'Clusters_AgeFraction.pdf'
+        plt.savefig(filename,bbox_inches='tight')
+        plt.close()
+    else :
+        plt.show()
 
 
 
