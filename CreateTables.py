@@ -522,36 +522,78 @@ PiecewiseTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
     
     return BIC_single,BIC_piecewise, BIC_singletrunc, BIC_piecewisetrunc
 
-def compare_AICc(galaxy_name,nsamples,omega1=False):
-    if(omega1):
-        sampler_single = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
-SinglePL_MCMC/MCMC_sampler'.format(galaxy_name))
+def compare_AICc(galaxy_name,nsamples,omega1=False,age=None):
+    MCMC_directory = '../Results/Galaxies/{}/Masked'.format(galaxy_name)
 
-        sampler_piecewise = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
-PiecePL_MCMC/MCMC_sampler'.format(galaxy_name))
+    #SinglePL
+    if(omega1 is True):
+        if(age == None):
+            MCMC_directory += '/Omega1/SinglePL_MCMC'
+        elif(age == 'young'):
+            MCMC_directory += '/Young/SinglePL_MCMC'
+        elif(age == 'old'):
+            MCMC_directory += '/Old/SinglePL_MCMC'
+        else:
+            MCMC_directory += '/SinglePL_MCMC'
+    try:
+        sampler_single = loadObj(MCMC_directory+'/MCMC_sampler')
+        AIC_single = 2*2.0 - 2*np.max(sampler_single.flatlnprobability)
+    except:
+        AIC_single = 1.e50
 
-        sampler_singletrunc = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
-SingleTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
+    #Piecewise
+    MCMC_directory = '../Results/Galaxies/{}/Masked'.format(galaxy_name)
+    if(omega1 is True):
+        if(age == None):
+            MCMC_directory += '/Omega1/PiecePL_MCMC'
+        elif(age == 'young'):
+            MCMC_directory += '/Young/PiecePL_MCMC'
+        elif(age == 'old'):
+            MCMC_directory += '/Old/PiecePL_MCMC'
 
-        sampler_piecewisetrunc = loadObj('../Results/Galaxies/{}/Masked/Omega1/\
-PiecewiseTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
     else:
-        sampler_single = loadObj('../Results/Galaxies/{}/Masked/\
-SinglePL_MCMC/MCMC_sampler'.format(galaxy_name))
+        MCMC_directory += '/PiecePL_MCMC'
 
-        sampler_piecewise = loadObj('../Results/Galaxies/{}/Masked/\
-PiecePL_MCMC/MCMC_sampler'.format(galaxy_name))
+    try:
+        sampler_piecewise = loadObj(MCMC_directory+'/MCMC_sampler')
+        AIC_piecewise = 2*4.0 - 2*np.max(sampler_piecewise.flatlnprobability)
+    except:
+        AIC_piecewise = 1.e50
 
-        sampler_singletrunc = loadObj('../Results/Galaxies/{}/Masked/\
-SingleTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
+    #SingleTrunc
+    MCMC_directory = '../Results/Galaxies/{}/Masked'.format(galaxy_name)
+    if(omega1 is True):
+        if(age == None):
+            MCMC_directory += '/Omega1/SingleTrunc_MCMC'
+        elif(age == 'young'):
+            MCMC_directory += '/Young/SingleTrunc_MCMC'
+        elif(age == 'old'):
+            MCMC_directory += '/Old/SingleTrunc_MCMC'
+    else:
+        MCMC_directory += '/SingleTrunc_MCMC'
+    try:    
+        sampler_singletrunc = loadObj(MCMC_directory+'/MCMC_sampler')
+        AIC_singletrunc = 2*3.0 - 2*np.max(sampler_singletrunc.flatlnprobability)
+    except:
+        AIC_singletrunc = 1.e50
 
-        sampler_piecewisetrunc = loadObj('../Results/Galaxies/{}/Masked/\
-PiecewiseTrunc_MCMC/MCMC_sampler'.format(galaxy_name))
+    #PiecewiseTrunc
+    MCMC_directory = '../Results/Galaxies/{}/Masked'.format(galaxy_name)
+    if(omega1 is True):
+        if(age == None):
+            MCMC_directory += '/Omega1/PiecewiseTrunc_MCMC'
+        elif(age == 'young'):
+            MCMC_directory += '/Young/PiecewiseTrunc_MCMC'
+        elif(age == 'old'):
+            MCMC_directory += '/Old/PiecewiseTrunc_MCMC'
+    else:
+        MCMC_directory += '/PiecewiseTrunc_MCMC'
 
-    AIC_single = 2*2.0 - 2*np.max(sampler_single.flatlnprobability)
-    AIC_piecewise = 2*4.0 - 2*np.max(sampler_piecewise.flatlnprobability)
-    AIC_singletrunc = 2*3.0 - 2*np.max(sampler_singletrunc.flatlnprobability)
-    AIC_piecewisetrunc = 2*5.0 - 2*np.max(sampler_piecewisetrunc.flatlnprobability)
+    try:    
+        sampler_piecewisetrunc = loadObj(MCMC_directory+'/MCMC_sampler')
+        AIC_piecewisetrunc = 2*5.0 - 2*np.max(sampler_piecewisetrunc.flatlnprobability)
+    except:
+        AIC_piecewisetrunc = 1.e50    
     
     AICc_single = AIC_single + (2*2*(2+1))/(nsamples - 2 - 1)
     AICc_piecewise = AIC_piecewise + (2*4*(4+1))/(nsamples - 4 - 1)
