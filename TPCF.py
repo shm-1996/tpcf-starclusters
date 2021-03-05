@@ -87,7 +87,8 @@ def random_distribution_probability(RA,DEC,distance_hist,xyz_centre,galaxy_class
     rand_prob = prob_bins[distance_bins]
     
     #Compute FOV mask
-    ra_dec = SkyCoord.from_name(galaxy_class.name)
+    name = galaxy_class.name.split('_')[0] + ' ' + galaxy_class.name.split('_')[1]
+    ra_dec = SkyCoord.from_name(name)
     xpix_c,ypix_c = wcs.all_world2pix(ra_dec.ra.value,ra_dec.dec.value,0)
     mask_xy = None
     for i in range(0,np.size(region)):
@@ -123,7 +124,8 @@ def masked_radial_random_sample(galaxy_class,len_random=100) :
     """
 
     #Compute distance to galactic centre
-    ra_dec = SkyCoord.from_name(galaxy_class.name)
+    name = galaxy_class.name.split('_')[0] + ' ' + galaxy_class.name.split('_')[1]
+    ra_dec = SkyCoord.from_name(name)
     ra_centre,dec_centre = ra_dec.ra.value,ra_dec.dec.value
 
     #RA/DEC
@@ -210,7 +212,8 @@ def masked_random_sample(galaxy_class,len_random=100):
     random_y = min_y+ np.random.random(len_random)*(max_y-min_y)
     random_xy = np.vstack((random_x,random_y)).T
 
-    ra_dec = SkyCoord.from_name(galaxy_class.name)
+    name = galaxy_class.name.split('_')[0] + ' ' + galaxy_class.name.split('_')[1]
+    ra_dec = SkyCoord.from_name(name)
     xpix_c,ypix_c = wcs.all_world2pix(ra_dec.ra.value,ra_dec.dec.value,0)
     mask_xy = None
     for i in range(0,np.size(region)):
