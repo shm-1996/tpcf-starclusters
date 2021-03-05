@@ -368,7 +368,8 @@ class Galaxy(object):
         fp.close()
 
         #Compute ra/dec of centre of galaxy
-        ra_dec = SkyCoord.from_name(self.name)
+        name = self.name.split('_')[0] + ' ' + self.name.split('_')[1]
+        ra_dec = SkyCoord.from_name(name)
         ra = ra_dec.ra.value
         dec = ra_dec.dec.value
         self.centre = ra,dec
@@ -664,7 +665,8 @@ class Galaxy(object):
         xpix,ypix = wcs.all_world2pix(self.ra_raw,self.dec_raw,0)
 
         #Coordinates of centre of galaxy
-        ra_dec = SkyCoord.from_name(self.name)
+        name_galaxy = self.name.split('_')[0] + ' ' + self.name.split('_')[1]
+        ra_dec = SkyCoord.from_name(name_galaxy)
         xpix_c,ypix_c = wcs.all_world2pix(ra_dec.ra.value,ra_dec.dec.value,0)
 
         # See Eq 1 Grasha et al 2017
@@ -787,7 +789,7 @@ class Galaxy(object):
         elif(function == 'smooth'):
             bounds = ([-10.0,-3.0,-3.0,beta_limits[0]],[10.0,0.0,0.0,beta_limits[1]])
         elif(function == 'singletrunc'):
-            bounds = ([-10.0,-3.0,beta_limits[0]],[10.0,0.0,0.0,beta_limits[1]])
+            bounds = ([-10.0,-3.0,np.min(separation_bins)],[10.0,0.0,np.max(separation_bins)*3.0])
 
         if(method == 'single') :
             if(function == 'piecewise'):
@@ -885,7 +887,7 @@ class Galaxy(object):
         if(self.name in ['NGC_1313',]):
             sfr = np.loadtxt(Legus_Table,usecols=10,delimiter='\t',dtype=str)
             mstar = np.loadtxt(Legus_Table,usecols=11,delimiter='\t',dtype=str)
-        elif(self.name in ['NGC_3738','NGC_4449','NGC_4656','NGC_6503','NGC_5457']):
+        elif(self.name in ['NGC_3738','NGC_4449','NGC_4656','NGC_6503','NGC_5457','NGC_5253']):
             sfr = np.loadtxt(Legus_Table,usecols=10,delimiter='\t',dtype=str)
             mstar = np.loadtxt(Legus_Table,usecols=11,delimiter='\t',dtype=str)
         else :
